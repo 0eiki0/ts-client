@@ -42,6 +42,9 @@ pub struct Config {
 /// Fixed port: the web view keeps its data (identities, settings) per address.
 const PORT: u16 = 47213;
 
+/// Window icon (same as the web interface's icon.svg), 128×128 RGBA.
+const ICON_RGBA: &[u8] = include_bytes!("../packaging/icon-128.rgba");
+
 enum UserEvent {
 	Input(String),
 	/// A message shown in the window (via the page's `toast`).
@@ -116,6 +119,7 @@ fn main() -> Result<()> {
 		.with_title("Funkraum")
 		.with_inner_size(LogicalSize::new(1180.0, 780.0))
 		.with_min_inner_size(LogicalSize::new(360.0, 480.0))
+		.with_window_icon(tao::window::Icon::from_rgba(ICON_RGBA.to_vec(), 128, 128).ok())
 		.build(&event_loop)
 		.context("Fenster")?;
 

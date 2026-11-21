@@ -11,6 +11,16 @@ fn main() {
 	// Commit of this build (set by the build workflow), used by the updater.
 	println!("cargo:rerun-if-env-changed=FUNKRAUM_BUILD");
 	println!("cargo:rustc-env=FUNKRAUM_BUILD={}", std::env::var("FUNKRAUM_BUILD").unwrap_or_default());
+	// Windows: app icon and name in the .exe (Explorer, taskbar).
+	println!("cargo:rerun-if-changed=packaging/icon.ico");
+	#[cfg(windows)]
+	if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+		let mut res = winresource::WindowsResource::new();
+		res.set_icon("packaging/icon.ico");
+		res.set("ProductName", "Funkraum");
+		res.set("FileDescription", "Funkraum");
+		res.compile().expect("Windows-Ressourcen (Icon)");
+	}
 	if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("musl") {
 		return;
 	}

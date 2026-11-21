@@ -95,6 +95,7 @@ jobs:
           lipo -create -output "$app/Contents/MacOS/funkraum" \
             target/aarch64-apple-darwin/release/funkraum target/x86_64-apple-darwin/release/funkraum
           sed "s/VERSION/$version/g" packaging/Info.plist > "$app/Contents/Info.plist"
+          cp packaging/icon.icns "$app/Contents/Resources/icon.icns"
           codesign --force --deep --sign - "$app"
           cd dist && ditto -c -k --keepParent "Funkraum.app" Funkraum-macOS.zip && rm -rf "Funkraum.app"
           shasum -a 256 Funkraum-macOS.zip > Funkraum-macOS.zip.sha256
