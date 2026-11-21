@@ -1,5 +1,5 @@
 'use strict';
-/* Funkraum – browser client for the TeamSpeak 3 web bridge. */
+/* Funkraum – user interface (from Funkraum Web). */
 
 // ---------------------------------------------------------------- helpers
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -424,7 +424,7 @@ function renderIdentityRow() {
   const st = syncState();
   $('#identity-hint').textContent = list.length
     ? (act ? `Eindeutige ID: ${act.uid || '(wird beim Verbinden berechnet)'}` : '') + (st ? ` · ☁ Sync: ${st.name}` : '')
-    : 'Noch keine Identität – beim ersten Verbinden wird eine neue erzeugt, oder du importierst deine aus dem TeamSpeak-Programm.';
+    : 'Noch keine Identität – beim ersten Verbinden wird eine neue erzeugt, oder du importierst eine bestehende.';
 }
 const updateIdentityHint = renderIdentityRow;
 
@@ -515,7 +515,7 @@ function identityManager() {
     if (card) body.append(card);
     const list = idList();
     const act = activeIdentity();
-    if (!list.length) body.append(el('p', { class: 'muted small' }, 'Noch keine Identität gespeichert. Importiere deine aus dem TeamSpeak-Programm oder erstelle eine neue. Ohne Identität wird beim Verbinden automatisch eine erzeugt.'));
+    if (!list.length) body.append(el('p', { class: 'muted small' }, 'Noch keine Identität gespeichert. Importiere eine bestehende oder erstelle eine neue. Ohne Identität wird beim Verbinden automatisch eine erzeugt.'));
     for (const e of list) {
       const isAct = act && act.id === e.id;
       const nameEl = el('strong', { class: 'id-name' }, e.name);
@@ -893,7 +893,7 @@ function handleMessage(m) {
 
 function onStatus(m) {
   setStatus(m.state);
-  if (m.state === 'connecting') showLoginInfo('Verbinde mit dem TeamSpeak-Server…');
+  if (m.state === 'connecting') showLoginInfo('Verbinde mit dem Server…');
   if (m.state === 'connected') {
     S.reconnectTries = 0;
     setBanner('');
@@ -905,7 +905,7 @@ function onStatus(m) {
     if (S.inputMuted || S.outputMuted) send({ t: 'set_mute', input: S.inputMuted, output: S.outputMuted });
   }
   if (m.state === 'reconnecting') {
-    setBanner('Verbindung zum TeamSpeak-Server unterbrochen – verbinde neu…');
+    setBanner('Verbindung zum Server unterbrochen – verbinde neu…');
     if (!S.wasReconnecting) sound('lost');
     S.wasReconnecting = true;
   }

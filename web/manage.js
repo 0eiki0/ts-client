@@ -403,7 +403,7 @@ const SERVER_FIELDS = [
     ['priority_speaker_dimm_modificator', 'Andere leiser bei Priority Speaker (dB, z. B. -18)', 'text'],
     ['min_clients_in_channel_before_forced_silence', 'Erzwungene Stille ab … Nutzern im Kanal', 'number'],
     ['channel_temp_delete_delay_default', 'Standard-Löschverzögerung temporärer Kanäle (Sekunden)', 'number'],
-    ['weblist_enabled', 'In der öffentlichen TeamSpeak-Serverliste anzeigen', 'check'],
+    ['weblist_enabled', 'In der öffentlichen Serverliste anzeigen', 'check'],
   ]],
   ['Protokollierung', [
     ['log_client', 'Clients', 'check'], ['log_query', 'ServerQuery', 'check'], ['log_channel', 'Kanäle', 'check'],
@@ -635,7 +635,7 @@ function bansPane(pane) {
   const reason = el('input', { type: 'text' });
   const addBtn = el('button', { type: 'submit', class: 'primary' }, 'Bann hinzufügen');
   const form = el('form', { class: 'adm-form' }, el('fieldset', {}, el('legend', {}, 'Neuer Bann'),
-    el('p', { class: 'muted small' }, 'Mindestens eins von IP, Name oder eindeutiger ID. Webnutzer haben auf dem TeamSpeak die IP der Brücke – sperre sie über die eindeutige ID (oder in /admin), sonst trifft es alle Webnutzer.'),
+    el('p', { class: 'muted small' }, 'Mindestens eins von IP, Name oder eindeutiger ID. Webnutzer haben auf dem Server die IP der Brücke – sperre sie über die eindeutige ID (oder in /admin), sonst trifft es alle Webnutzer.'),
     el('div', { class: 'grid2' }, field('IP-Adresse', ip), field('Nickname', name), field('Eindeutige ID', uid), field('Dauer', time)),
     field('Grund', reason), el('div', { class: 'adm-actions' }, addBtn)));
   form.addEventListener('submit', (e) => {

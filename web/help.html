@@ -95,7 +95,7 @@
 
     <section class="card" id="start">
       <h2>Erste Schritte</h2>
-      <p class="lead">Mit Funkraum kannst du direkt im Browser auf unseren TeamSpeak-Server – ohne etwas zu installieren. Du hörst und sprichst wie mit dem normalen TeamSpeak-Programm.</p>
+      <p class="lead">Mit Funkraum kannst du direkt im Browser auf unseren Sprachserver – ohne etwas zu installieren. Du hörst und sprichst wie mit einem normalen Sprachchat-Programm.</p>
       <ol class="steps">
         <li><strong>Nickname eingeben.</strong> So sehen dich die anderen auf dem Server (3 bis 30 Zeichen).</li>
         <li><strong>Auf „Verbinden“ klicken.</strong> Beim ersten Mal fragt der Browser, ob die Seite dein <strong>Mikrofon</strong> benutzen darf. Klicke auf <em>Erlauben</em> – sonst können die anderen dich nicht hören.</li>
@@ -178,13 +178,13 @@
 
     <section class="card" id="verwaltung">
       <h2>Server verwalten &amp; Rechte</h2>
-      <p>Admins können den Server in der Weboberfläche genauso verwalten wie im TeamSpeak-Programm. Was du davon benutzen darfst, entscheidet der TeamSpeak-Server anhand deiner Rechte. Fehlt dir ein Recht, steht in der Meldung, welches. Wer Admin werden soll, löst den ServerAdmin-Schlüssel ein: Klick auf dich selbst → „Berechtigungsschlüssel einlösen“.</p>
+      <p>Admins können den Server direkt in der Oberfläche verwalten. Was du davon benutzen darfst, entscheidet der Server anhand deiner Rechte. Fehlt dir ein Recht, steht in der Meldung, welches. Wer Admin werden soll, löst den ServerAdmin-Schlüssel ein: Klick auf dich selbst → „Berechtigungsschlüssel einlösen“.</p>
       <h3>Serververwaltung</h3>
       <p>Das <strong>Schild-Symbol</strong> <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg> oben in der Leiste öffnet die Serververwaltung, ebenso „Serverinfo“ → „Server verwalten“. Am Handy lassen sich die Reiter oben seitlich wischen. Die Serververwaltung hat diese Bereiche:</p>
       <ul>
         <li><strong>Server</strong>: Name, Willkommensnachricht, Slots, Passwort, Host-Nachricht, Banner und Button, Standardgruppen, Sicherheitslevel, Anti-Flood, Beschwerden, Übertragungsgrenzen und Protokollierung. „Server speichern“ schickt nur die geänderten Werte.</li>
         <li><strong>Servergruppen</strong> und <strong>Kanalgruppen</strong>: Gruppen anlegen, kopieren, umbenennen und löschen, ihre Rechte bearbeiten und die Mitglieder sehen, hinzufügen und entfernen. Mitglieder fügst du über den Namen (wenn die Person online ist), die eindeutige ID oder die Datenbank-ID hinzu. Bei Kanalgruppen wählst du zusätzlich den Kanal. „Entfernen“ setzt die Person dort auf die Standard-Kanalgruppe zurück. Vorlagen und Query-Gruppen sind ausgeblendet, ein Haken unter der Liste zeigt sie an.</li>
-        <li><strong>Bans</strong>: Bannliste ansehen, Banns aufheben und neue anlegen (nach IP, Name oder eindeutiger ID). Webnutzer haben auf dem TeamSpeak die IP der Brücke, sperre sie deshalb über die eindeutige ID.</li>
+        <li><strong>Bans</strong>: Bannliste ansehen, Banns aufheben und neue anlegen (nach IP, Name oder eindeutiger ID). Webnutzer haben auf dem Server die IP der Brücke, sperre sie deshalb über die eindeutige ID.</li>
         <li><strong>Schlüssel</strong>: Berechtigungsschlüssel für eine Server- oder Kanalgruppe erstellen, kopieren und löschen.</li>
         <li><strong>Beschwerden</strong>: ansehen und löschen.</li>
         <li><strong>Temporäre Passwörter</strong>: Passwörter, mit denen jemand eine Zeit lang auf den Server kommt, ohne das eigentliche Serverpasswort zu kennen – auf Wunsch direkt in einen bestimmten Kanal.</li>
@@ -227,8 +227,8 @@
       <div class="warn-box"><strong>Deine Identität ist wie ein Passwort</strong>Gib sie niemals weiter. Wer sie hat, kann sich auf dem Server als du ausgeben – mit all deinen Rechten.</div>
       <h3>Wo ist meine Identität gespeichert?</h3>
       <p>Nur in <strong>diesem Browser</strong> auf <strong>diesem Gerät</strong>. Löschst du die Browserdaten („Verlauf und Websitedaten löschen“), ist sie weg. Deshalb: <strong>exportieren</strong> oder den <a href="#sync">Sync</a> einrichten.</p>
-      <h3>Deine Identität aus dem TeamSpeak-Programm übernehmen</h3>
-      <p>Wenn du TeamSpeak schon auf dem PC benutzt und dort deine Rechte hast, nimm diese Identität mit:</p>
+      <h3>Deine Identität aus einem anderen Programm übernehmen</h3>
+      <p>Wenn du schon ein anderes Programm für den Server benutzt und dort deine Rechte hast, nimm diese Identität mit:</p>
       <ol class="steps">
         <li>Im TeamSpeak-3-Programm: <strong>Extras → Identitäten</strong>. (Im neueren TeamSpeak-6-Programm sind Identitäten anders organisiert – schau dort in den Einstellungen nach einem Export. Gibt es keinen, frag das Server-Team nach deinen Gruppen.)</li>
         <li>Links deine Identität auswählen und unten auf <strong>Exportieren</strong> klicken. Die Datei (<code>.ini</code>) irgendwo speichern.</li>
@@ -240,7 +240,7 @@
       <ul>
         <li><strong>Verwenden</strong> – diese Identität beim nächsten Verbinden benutzen (auch über die Auswahl auf der Startseite),</li>
         <li><strong>Umbenennen</strong> – der Name ist nur für dich, der Server sieht ihn nicht,</li>
-        <li><strong>Exportieren</strong> – als Text oder <code>.ini</code>-Datei, die auch das TeamSpeak-Programm importieren kann,</li>
+        <li><strong>Exportieren</strong> – als Text oder <code>.ini</code>-Datei, die du auch in anderen Programmen importieren kannst,</li>
         <li><strong>Löschen</strong> – Vorsicht, ohne Export ist sie für immer weg,</li>
         <li><strong>Neu erstellen</strong> – eine ganz neue Identität (ohne Rechte).</li>
       </ul>
@@ -273,14 +273,13 @@
 
     <section class="card" id="hinweise">
       <h2>Hinweise &amp; Sounds</h2>
-      <p>Wie im echten TeamSpeak sagt dir eine Stimme, was passiert – zum Beispiel „Benutzer hat deinen Kanal betreten“, „Du wurdest verschoben“ oder „Mikrofon stummgeschaltet“.</p>
+      <p>Eine Stimme sagt dir, was passiert – zum Beispiel „Benutzer hat deinen Kanal betreten“, „Du wurdest verschoben“ oder „Mikrofon stummgeschaltet“.</p>
       <ul>
         <li>In den Einstellungen unter <strong>Ausgabe → Hinweise</strong> wählst du: <em>Sprachansagen</em>, <em>Töne</em> (kurze Pieptöne) oder <em>Aus</em>. Die Hinweise haben eine eigene Lautstärke.</li>
         <li>Unter <strong>Hinweise anpassen…</strong> kannst du jedes Ereignis einzeln ausschalten, mit <strong>▶</strong> anhören und mit <strong>Datei…</strong> einen <strong>eigenen Sound</strong> wählen (z.&nbsp;B. <code>.wav</code> oder <code>.mp3</code>). Mit <strong>✕</strong> kommt die normale Ansage zurück.</li>
         <li>Hast du deinen <strong>Lautsprecher stummgeschaltet</strong> (Taste <kbd>L</kbd>), bekommst du auch keine Ansagen und Töne mehr – nur noch die Bestätigung „Lautsprecher stummgeschaltet“.</li>
         <li>Die Stimme kommt von deinem Gerät. Je nach Computer oder Browser klingt sie daher etwas anders. In Microsoft Edge gibt es besonders natürliche Stimmen.</li>
       </ul>
-      <div class="tip"><strong>Die Original-TeamSpeak-Sounds</strong>Wenn du TeamSpeak installiert hast, findest du die Sounds im Installationsordner unter <code>sound\default</code>. Du kannst sie über „Datei…“ für dich selbst einbinden.</div>
     </section>
 
     <section class="card" id="einstellungen">
@@ -382,10 +381,10 @@
         <p>Der Server lässt dich nicht hinein. Unter der Meldung stehen Grund und Dauer. Wenn du denkst, dass das ein Fehler ist, wende dich an die Admins des Servers.</p>
       </details>
       <details class="faq"><summary>Meine Rechte / Servergruppen sind weg</summary>
-        <p>Du benutzt vermutlich eine andere Identität als sonst – zum Beispiel, weil die Browserdaten gelöscht wurden oder du auf einem anderen Gerät bist. Importiere deine Identität aus dem TeamSpeak-Programm oder melde dich beim <a href="#sync">Sync</a> an. Siehe <a href="#identitaet">Identitäten</a>.</p>
+        <p>Du benutzt vermutlich eine andere Identität als sonst – zum Beispiel, weil die Browserdaten gelöscht wurden oder du auf einem anderen Gerät bist. Importiere deine Identität aus deinem bisherigen Programm oder melde dich beim <a href="#sync">Sync</a> an. Siehe <a href="#identitaet">Identitäten</a>.</p>
       </details>
       <details class="faq"><summary>„Dafür fehlen dir die Rechte“ beim Verwalten</summary>
-        <p>Der TeamSpeak-Server erlaubt dir diese Änderung nicht. In Klammern steht, welches Recht fehlt (z.&nbsp;B. <code>b_virtualserver_modify_name</code>). Bitte einen Admin, dir das Recht oder eine passende Gruppe zu geben, oder löse einen Berechtigungsschlüssel ein. Steht dort „Gruppen-Bearbeitungsstärke“ oder „Rechte-Bearbeitungsstärke“, ist die Gruppe bzw. das Recht für deine Stärke zu hoch. Die Werte <code>i_group_modify_power</code> und <code>i_permission_modify_power</code> deiner Gruppe müssen mindestens so hoch sein wie die benötigte Stärke.</p>
+        <p>Der Server erlaubt dir diese Änderung nicht. In Klammern steht, welches Recht fehlt (z.&nbsp;B. <code>b_virtualserver_modify_name</code>). Bitte einen Admin, dir das Recht oder eine passende Gruppe zu geben, oder löse einen Berechtigungsschlüssel ein. Steht dort „Gruppen-Bearbeitungsstärke“ oder „Rechte-Bearbeitungsstärke“, ist die Gruppe bzw. das Recht für deine Stärke zu hoch. Die Werte <code>i_group_modify_power</code> und <code>i_permission_modify_power</code> deiner Gruppe müssen mindestens so hoch sein wie die benötigte Stärke.</p>
       </details>
       <details class="faq"><summary>In der Serververwaltung fehlen Felder oder Listen bleiben leer</summary>
         <p>Der Server schickt nur, was du sehen darfst. Fehlen dir Rechte zum Ansehen (z.&nbsp;B. für die Bannliste oder die Servereinstellungen), erscheint eine Fehlermeldung oder die Felder fehlen. Eine leere Liste kann aber auch einfach bedeuten, dass es nichts gibt – etwa keine Banns. Mit ↻ bzw. durch erneutes Öffnen lädst du neu.</p>
@@ -402,7 +401,7 @@
       <details class="faq"><summary>Die anderen sagen, ich klinge verzerrt oder zu leise</summary>
         <p>Schau in den Einstellungen auf den <strong>Mikrofon-Check</strong> und mach einen <strong>Mikrofontest</strong>. Meist ist das Mikrofon im Computer zu laut (verzerrt) oder zu leise eingestellt – siehe <a href="#mikrofon">Mikrofon &amp; Sprechen</a>.</p>
       </details>
-      <details class="faq"><summary>„Verbindung zum TeamSpeak-Server unterbrochen“</summary>
+      <details class="faq"><summary>„Verbindung zum Server unterbrochen“</summary>
         <p>Funkraum versucht automatisch, die Verbindung wiederherzustellen. Klappt es nicht, lade die Seite neu und verbinde dich erneut.</p>
       </details>
       <details class="faq"><summary>Beim Sync steht „Name oder Passphrase falsch“</summary>
@@ -415,8 +414,8 @@
       <ul>
         <li><strong>In deinem Browser</strong>: deine Identitäten, Einstellungen, eigene Sounds, Lautstärken pro Person und – wenn du „Eingaben merken“ aktiviert hast – Nickname und Kanal. Passwörter für Server und Kanäle werden <strong>nicht</strong> gespeichert.</li>
         <li><strong>Auf dem Server dieser Seite</strong>: nur deine verschlüsselte Sync-Sicherung, falls du den Sync eingerichtet hast. Niemand außer dir kann sie lesen.</li>
-        <li><strong>Während du verbunden bist</strong>: Die Seite leitet Ton und Chat zwischen deinem Browser und dem TeamSpeak-Server weiter, wie das TeamSpeak-Programm auch. Ton und Nachrichten werden dabei nicht gespeichert.</li>
-        <li>Der TeamSpeak-Server sieht deinen Nickname, deine eindeutige ID und die Adresse dieser Seite (nicht deine eigene).</li>
+        <li><strong>Während du verbunden bist</strong>: Die Seite leitet Ton und Chat zwischen deinem Browser und dem Sprachserver weiter. Ton und Nachrichten werden dabei nicht gespeichert.</li>
+        <li>Der Sprachserver sieht deinen Nickname, deine eindeutige ID und die Adresse dieser Seite (nicht deine eigene).</li>
       </ul>
       <p>Alles im Browser löschst du über die Browser-Einstellungen („Websitedaten löschen“) – vorher Identitäten exportieren!</p>
     </section>
