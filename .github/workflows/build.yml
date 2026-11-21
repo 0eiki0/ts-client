@@ -1,0 +1,133 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Creates the release first; the build jobs upload their files into it.
+  release:
+    name: Prepare release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Create "latest" (every push to main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest \
+            --target "$GITHUB_SHA" \
+            --title "Neueste Version (main)" \
+            --notes "Automatisch gebaut aus Commit $GITHUB_SHA. Die Dateien erscheinen, sobald der Build fertig ist (einige Minuten)." \
+            --prerelease
+
+      - name: Create versioned release (tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+
+  windows:
+    name: Windows
+    needs: release
+    if: ${{ !cancelled() && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked
+      - name: Test
+        run: cargo test --locked --release
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/ts-client.exe dist/TS-Client-Windows.exe
+      - name: Upload to the release
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag=latest
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then tag="$GITHUB_REF_NAME"; fi
+          gh release upload "$tag" dist/* --clobber
+
+  macos:
+    name: macOS (Universal)
+    needs: release
+    if: ${{ !cancelled() && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Install build tools
+        run: brew install cmake || true
+      - name: Build
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+      - name: Test
+        run: cargo test --locked --release --target aarch64-apple-darwin
+      - name: Package (.app)
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          app="dist/TS Client.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          lipo -create -output "$app/Contents/MacOS/ts-client" \
+            target/aarch64-apple-darwin/release/ts-client target/x86_64-apple-darwin/release/ts-client
+          sed "s/VERSION/$version/g" packaging/Info.plist > "$app/Contents/Info.plist"
+          codesign --force --deep --sign - "$app"
+          cd dist && ditto -c -k --keepParent "TS Client.app" TS-Client-macOS.zip && rm -rf "TS Client.app"
+      - name: Upload to the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag=latest
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then tag="$GITHUB_REF_NAME"; fi
+          gh release upload "$tag" dist/* --clobber
+
+  linux:
+    name: Linux
+    needs: release
+    if: ${{ !cancelled() && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libxdo-dev cmake
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked
+      - name: Test
+        run: cargo test --locked --release
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp target/release/ts-client dist/TS-Client-Linux-x86_64
+          chmod +x dist/TS-Client-Linux-x86_64
+      - name: Upload to the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag=latest
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then tag="$GITHUB_REF_NAME"; fi
+          gh release upload "$tag" dist/* --clobber

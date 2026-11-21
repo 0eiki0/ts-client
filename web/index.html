@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1f27">
+<title>TS3 Web</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="login" class="screen">
+  <form id="login-form" class="card login-card" autocomplete="on">
+    <div class="brand">
+      <img src="icon.svg" alt="" width="40" height="40">
+      <div>
+        <h1 id="app-title">TS3 Web</h1>
+        <p class="muted" id="login-server-label"></p>
+      </div>
+      <button type="button" class="tool" id="login-settings" title="Einstellungen" aria-label="Einstellungen"></button>
+    </div>
+
+    <div id="login-error" class="alert error" hidden></div>
+    <div id="login-info" class="alert info" hidden></div>
+    <div id="insecure-warning" class="alert warn" hidden>
+      Diese Seite läuft ohne HTTPS. Browser erlauben dann keinen Mikrofonzugriff –
+      du kannst nur zuhören. Starte die Brücke mit <code>--tls-cert</code>/<code>--tls-key</code>
+      oder hinter einem HTTPS-Reverse-Proxy.
+    </div>
+
+    <label id="row-address" hidden>Serveradresse
+      <input name="address" id="f-address" placeholder="ts.example.com:9987" autocomplete="url">
+    </label>
+    <label>Nickname
+      <input name="nickname" id="f-nickname" required minlength="3" maxlength="30" autocomplete="nickname" placeholder="Dein Name">
+    </label>
+    <label id="row-access" hidden>Zugangspasswort (Weboberfläche)
+      <input name="access" id="f-access" type="password" autocomplete="current-password">
+    </label>
+
+    <details id="login-advanced">
+      <summary>Erweitert</summary>
+      <label>Serverpasswort
+        <input name="server_password" id="f-server-password" type="password" autocomplete="off">
+      </label>
+      <label>Kanal (Pfad, z. B. <code>Lobby/Ecke</code>)
+        <input name="channel" id="f-channel" autocomplete="off">
+      </label>
+      <label>Kanalpasswort
+        <input name="channel_password" id="f-channel-password" type="password" autocomplete="off">
+      </label>
+      <label class="check"><input type="checkbox" id="f-remember" checked> Eingaben merken (ohne Passwörter)</label>
+    </details>
+
+    <button type="submit" class="primary big" id="login-btn">Verbinden</button>
+    <div class="identity-row">
+      <div class="id-select-row">
+        <label id="row-identity" hidden>Identität
+          <select id="f-identity"></select>
+        </label>
+        <button type="button" id="l-id-manage">Identitäten verwalten</button>
+      </div>
+      <p class="muted small" id="identity-hint"></p>
+    </div>
+    <p class="help-link"><a href="help.html">❓ Hilfe &amp; Anleitung</a></p>
+  </form>
+</section>
+
+<!-- ============ MAIN APP ============ -->
+<section id="app" class="screen" hidden>
+  <header class="topbar">
+    <div class="server-title">
+      <span class="status-dot" id="status-dot"></span>
+      <strong id="server-name">…</strong>
+      <span class="muted small" id="net-stats"></span>
+    </div>
+    <div class="toolbar">
+      <button class="tool" id="btn-mic" title="Mikrofon stummschalten (M)"></button>
+      <button class="tool" id="btn-speaker" title="Lautsprecher stummschalten (L)"></button>
+      <button class="tool" id="btn-away" title="Abwesend"></button>
+      <button class="tool" id="btn-info" title="Serverinfo"></button>
+      <button class="tool" id="btn-manage" title="Serververwaltung (Server, Gruppen, Rechte, Bans)"></button>
+      <button class="tool" id="btn-mini" title="Kleines Fenster (immer im Vordergrund)"></button>
+      <button class="tool" id="btn-settings" title="Einstellungen"></button>
+      <a class="tool" id="btn-help" href="help.html" title="Hilfe &amp; Anleitung" aria-label="Hilfe"></a>
+      <button class="tool danger" id="btn-disconnect" title="Verbindung trennen"></button>
+    </div>
+  </header>
+
+  <div id="banner" class="alert warn slim" hidden></div>
+
+  <nav class="mobile-tabs">
+    <button data-pane="tree" class="active">Kanäle</button>
+    <button data-pane="chat">Chat <span class="badge" id="mobile-chat-badge" hidden></span></button>
+  </nav>
+
+  <main class="layout">
+    <aside class="pane tree-pane active" id="pane-tree">
+      <div class="tree-head">
+        <input type="search" id="tree-filter" placeholder="Suchen…">
+        <button class="tool small" id="btn-new-channel" title="Kanal erstellen"></button>
+      </div>
+      <div id="tree" class="tree" role="tree"></div>
+    </aside>
+
+    <section class="pane chat-pane" id="pane-chat">
+      <div class="chat-tabs" id="chat-tabs"></div>
+      <div class="chat-log" id="chat-log" aria-live="polite"></div>
+      <form class="chat-input" id="chat-form">
+        <input id="chat-text" autocomplete="off" maxlength="1024" placeholder="Nachricht…">
+        <button type="submit" class="primary">Senden</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <div class="meter-wrap" title="Mikrofonpegel">
+      <div class="meter"><div id="mic-meter"></div><div id="mic-threshold"></div></div>
+    </div>
+    <span id="tx-state" class="muted small"></span>
+    <button id="ptt-button" class="ptt" hidden>Gedrückt halten zum Sprechen</button>
+  </footer>
+</section>
+
+<!-- ============ MODALS ============ -->
+<div id="modal-backdrop" class="backdrop" hidden>
+  <div class="card modal" role="dialog" aria-modal="true">
+    <header class="modal-head">
+      <h2 id="modal-title"></h2>
+      <button class="tool" id="modal-close" aria-label="Schließen">✕</button>
+    </header>
+    <div id="modal-body" class="modal-body"></div>
+    <footer id="modal-foot" class="modal-foot"></footer>
+  </div>
+</div>
+
+<div id="confirm-backdrop" class="backdrop confirm-layer" hidden>
+  <div id="confirm-card" class="card confirm" role="alertdialog" aria-modal="true"></div>
+</div>
+
+<div id="help-layer" class="help-layer" hidden>
+  <div class="help-frame card" role="dialog" aria-modal="true" aria-label="Hilfe &amp; Anleitung">
+    <button type="button" class="tool help-close" id="help-close" title="Hilfe schließen (Esc)" aria-label="Hilfe schließen">✕</button>
+    <iframe id="help-iframe" title="Hilfe &amp; Anleitung"></iframe>
+  </div>
+</div>
+
+<div id="ctx-menu" class="ctx-menu" hidden></div>
+<div id="toasts" class="toasts"></div>
+
+<template id="tpl-settings">
+  <div class="settings">
+    <p class="small"><a href="help.html#einstellungen">❓ Was bedeuten die Einstellungen? Zur Hilfe</a></p>
+    <p class="muted small" id="s-preview-note" hidden>Die Einstellungen werden in diesem Browser gespeichert und beim Verbinden verwendet. Zum Testen ist dein Mikrofon eingeschaltet, solange dieser Dialog offen ist – der Pegel erscheint unter „Sendemodus“, und mit „Mikrofon testen“ hörst du dich selbst.</p>
+    <h3>Eingabe</h3>
+    <label>Mikrofon
+      <select id="s-input-device"></select>
+    </label>
+    <label>Sendemodus
+      <select id="s-mode">
+        <option value="auto">Sprachaktivierung – automatisch (empfohlen)</option>
+        <option value="vad">Sprachaktivierung – eigene Schwelle</option>
+        <option value="ptt">Push-to-Talk</option>
+        <option value="continuous">Dauerhaft senden</option>
+      </select>
+    </label>
+    <div id="s-ptt-row" class="row">
+      <span>Push-to-Talk-Taste: <kbd id="s-ptt-key"></kbd></span>
+      <button type="button" id="s-ptt-record">Taste ändern</button>
+    </div>
+    <div id="s-vad-row">
+      <label id="s-vad-manual">Schwelle Sprachaktivierung: <span id="s-vad-val"></span>
+        <input type="range" id="s-vad" min="-70" max="-10" step="1">
+      </label>
+      <p id="s-vad-auto" class="small muted">Die Brücke erkennt selbst, wann du sprichst – du musst nichts einstellen. Der Balken wird grün, wenn du übertragen wirst.</p>
+      <div class="meter"><div id="s-meter"></div><div id="s-meter-threshold"></div></div>
+    </div>
+    <div class="mic-check" id="s-mic-check"></div>
+    <div class="row wrap"><button type="button" id="s-mic-test">Mikrofon testen</button><span class="small muted">Nimmt 5 Sekunden auf und spielt sie dir so vor, wie die anderen dich hören.</span></div>
+    <label>Mikrofonverstärkung: <span id="s-gain-val"></span>
+      <input type="range" id="s-gain" min="0" max="300" step="5">
+    </label>
+    <label class="check"><input type="checkbox" id="s-echo"> Echounterdrückung</label>
+    <label class="check"><input type="checkbox" id="s-denoise"> <span>KI-Rauschfilter: Tastatur, Mausklicks, Lüfter, Brummen <span class="muted small">(empfohlen)</span></span></label>
+    <label class="check"><input type="checkbox" id="s-autolevel"> <span>Lautstärke automatisch angleichen <span class="muted small">(empfohlen)</span></span></label>
+    <label class="check"><input type="checkbox" id="s-noise"> Rauschunterdrückung des Browsers</label>
+    <label class="check"><input type="checkbox" id="s-agc"> Automatische Lautstärke des Browsers</label>
+
+    <h3>Ausgabe</h3>
+    <label id="s-output-row">Lautsprecher / Ausgang
+      <span class="row" style="margin:4px 0 0">
+        <select id="s-output-device" style="margin:0"></select>
+        <button type="button" id="s-output-pick" class="small" hidden>Gerät wählen…</button>
+      </span>
+      <span id="s-output-hint" class="muted small" style="display:block;font-weight:400;margin-top:4px" hidden></span>
+    </label>
+    <label>Gesamtlautstärke: <span id="s-volume-val"></span>
+      <input type="range" id="s-volume" min="0" max="200" step="5">
+    </label>
+    <label>Hinweise
+      <select id="s-sound-mode">
+        <option value="voice">Sprachansagen (wie TeamSpeak)</option>
+        <option value="tones">Töne</option>
+        <option value="off">Aus</option>
+      </select>
+    </label>
+    <label>Lautstärke der Hinweise: <span id="s-sound-volume-val"></span>
+      <input type="range" id="s-sound-volume" min="0" max="100" step="5">
+    </label>
+    <div class="row wrap"><button type="button" id="s-sounds-edit">Hinweise anpassen…</button></div>
+    <label class="check"><input type="checkbox" id="s-notify"> Desktop-Benachrichtigungen bei Pokes und privaten Nachrichten</label>
+    <label class="check"><input type="checkbox" id="s-joinleave"> Beitritte und Austritte im Chat anzeigen</label>
+    <div id="s-history-row" hidden>
+      <label class="check"><input type="checkbox" id="s-history"> Chatverlauf speichern – Server-, Kanal- und private Chats sind nach dem Wiederverbinden wieder da, auch auf anderen Geräten mit derselben Identität (höchstens 500 Nachrichten pro Chat, verschlüsselt, die Brücke kann nichts lesen)</label>
+      <div class="row wrap"><button type="button" id="s-history-delete">Gespeicherten Verlauf löschen</button></div>
+    </div>
+
+    <h3>Tastenbelegung</h3>
+    <p class="muted small">Klicke auf „Ändern“ und drücke dann die gewünschte Taste – auch mit Strg, Alt oder Umschalt kombiniert – oder eine Maus-Seitentaste. Tastenkürzel funktionieren nur, solange dieses Browserfenster aktiv ist.</p>
+    <div id="s-keys" class="key-list"></div>
+    <div class="row wrap"><button type="button" id="s-keys-reset">Standard wiederherstellen</button></div>
+
+    <h3>Darstellung</h3>
+    <label>Design
+      <select id="s-theme">
+        <option value="auto">Systemeinstellung</option>
+        <option value="dark">Dunkel</option>
+        <option value="light">Hell</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="s-show-query"> ServerQuery-Clients (Bots) im Kanalbaum anzeigen</label>
+
+    <h3>Identität</h3>
+    <p class="muted small">Die Identität bestimmt deine eindeutige ID auf dem Server (Servergruppen, Rechte). Sie wird nur in diesem Browser gespeichert. Du kannst sie auch schon vor dem Verbinden auf der Anmeldeseite importieren.</p>
+    <p class="small">Aktiv: <strong id="s-id-name"></strong><br>Eindeutige ID: <code id="s-uid">–</code></p>
+    <div class="row wrap">
+      <button type="button" id="s-id-manage">Identitäten verwalten…</button>
+    </div>
+  </div>
+</template>
+
+<script src="app.js"></script>
+<script src="manage.js"></script>
+</body>
+</html>

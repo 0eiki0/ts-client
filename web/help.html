@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1f27">
+<title>Hilfe – TS3 Web</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<style>
+  html, body { height: auto; min-height: 100%; }
+  /* shown as overlay inside the app: the app's ✕ replaces the back button */
+  .embedded .help-head .back { display: none; }
+  .embedded .help-head { padding-right: 52px; }
+  .help { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .help-head { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 8px 0 4px; }
+  .help-head h1 { margin: 0; font-size: 24px; }
+  .help-head p { margin: 2px 0 0; }
+  .help-head .back { margin-left: auto; text-decoration: none; }
+  .toc { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; padding: 12px; }
+  .toc h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 2px 6px 8px; }
+  .toc a { display: block; padding: 5px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 14px; }
+  .toc a:hover { background: var(--hover); }
+  .toc a.active { background: var(--select); color: var(--accent); font-weight: 600; }
+  .content { min-width: 0; }
+  .content section { padding: 22px 26px; margin-bottom: 18px; scroll-margin-top: 16px; }
+  .content h2 { margin: 0 0 10px; font-size: 21px; }
+  .content h3 { text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--text); margin: 22px 0 6px; }
+  .content p, .content li { line-height: 1.6; }
+  .content ul, .content ol { padding-left: 22px; }
+  .content li + li { margin-top: 4px; }
+  .lead { font-size: 16px; color: var(--muted); margin-top: 0; }
+  .tip, .warn-box { border-radius: 8px; padding: 10px 14px; margin: 14px 0; line-height: 1.55; }
+  .tip { background: var(--info-bg); color: var(--info-text); }
+  .warn-box { background: var(--warn-bg); color: var(--warn-text); }
+  .tip > strong:first-child, .warn-box > strong:first-child { display: block; margin-bottom: 2px; }
+  .legend { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; align-items: center; margin: 12px 0; }
+  .legend .demo { display: flex; align-items: center; gap: 8px; min-width: 150px; font-size: 14px; }
+  .legend .talk-dot.avatar { position: relative; }
+  .legend .chan-ico { width: 22px; height: 22px; padding: 4px; border-radius: 6px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); flex: none; }
+  .legend .chan-ico.locked { color: #c97c0e; background: color-mix(in srgb, #d38b1f 16%, transparent); }
+  .legend .chan-ico svg, .legend .ico svg { width: 100%; height: 100%; display: block; }
+  .legend .count { font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .legend .ring { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--talk); }
+  kbd { font-size: 12px; }
+  table.keys { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  table.keys td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  table.keys td:first-child { width: 160px; white-space: nowrap; }
+  details.faq { border: 1px solid var(--border); border-radius: 8px; padding: 0 14px; margin: 8px 0; background: var(--panel-2); }
+  details.faq summary { color: var(--text); font-weight: 600; padding: 11px 0; }
+  details.faq[open] summary { border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .steps li::marker { font-weight: 700; color: var(--accent); }
+  @media (max-width: 820px) {
+    .help { grid-template-columns: 1fr; gap: 12px; }
+    .toc { position: static; max-height: none; }
+    .toc nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    .toc a { background: var(--panel-2); border: 1px solid var(--border); font-size: 13px; }
+    .content section { padding: 18px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="help">
+  <header class="help-head">
+    <img src="icon.svg" alt="" width="40" height="40">
+    <div>
+      <h1>Hilfe &amp; Anleitung</h1>
+      <p class="muted">Alles, was du über TS3 Web wissen musst – einfach erklärt.</p>
+    </div>
+    <a class="back" href="./"><button type="button">← Zurück</button></a>
+  </header>
+
+  <aside class="card toc">
+    <h2>Inhalt</h2>
+    <nav>
+      <a href="#start">Erste Schritte</a>
+      <a href="#mikrofon">Mikrofon &amp; Sprechen</a>
+      <a href="#hoeren">Hören &amp; Lautstärke</a>
+      <a href="#kanaele">Kanäle &amp; Symbole</a>
+      <a href="#verwaltung">Server verwalten &amp; Rechte</a>
+      <a href="#chat">Chat &amp; Anstupsen</a>
+      <a href="#identitaet">Identitäten</a>
+      <a href="#sync">Identitäten auf mehreren Geräten</a>
+      <a href="#hinweise">Hinweise &amp; Sounds</a>
+      <a href="#einstellungen">Einstellungen</a>
+      <a href="#mini">Kleines Fenster</a>
+      <a href="#tasten">Tastenkürzel</a>
+      <a href="#handy">Handy &amp; App</a>
+      <a href="#probleme">Wenn etwas nicht klappt</a>
+      <a href="#datenschutz">Datenschutz</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+
+    <section class="card" id="start">
+      <h2>Erste Schritte</h2>
+      <p class="lead">Mit TS3 Web kannst du direkt im Browser auf unseren TeamSpeak-Server – ohne etwas zu installieren. Du hörst und sprichst wie mit dem normalen TeamSpeak-Programm.</p>
+      <ol class="steps">
+        <li><strong>Nickname eingeben.</strong> So sehen dich die anderen auf dem Server (3 bis 30 Zeichen).</li>
+        <li><strong>Auf „Verbinden“ klicken.</strong> Beim ersten Mal fragt der Browser, ob die Seite dein <strong>Mikrofon</strong> benutzen darf. Klicke auf <em>Erlauben</em> – sonst können die anderen dich nicht hören.</li>
+        <li><strong>Fertig!</strong> Links siehst du die Kanäle und wer darin ist, rechts den Chat. Mit einem <strong>Doppelklick</strong> auf einen Kanal gehst du hinein, ein <strong>Rechtsklick</strong> öffnet das Menü. Am Handy: zweimal tippen bzw. lange drücken.</li>
+      </ol>
+      <p>Unter „Erweitert“ kannst du ein Serverpasswort und einen Kanal angeben, in dem du direkt landen möchtest (z.&nbsp;B. <code>Lobby/Ecke</code> für einen Unterkanal).</p>
+      <div class="tip"><strong>Tipp: Vorher testen</strong>Über das Zahnrad oben rechts auf der Startseite kannst du schon vor dem Verbinden dein Mikrofon auswählen und testen.</div>
+    </section>
+
+    <section class="card" id="mikrofon">
+      <h2>Mikrofon &amp; Sprechen</h2>
+      <p class="lead">Du musst eigentlich nichts einstellen: TS3 Web filtert Störgeräusche, gleicht die Lautstärke an und erkennt selbst, wann du sprichst – auch mit einem einfachen Headset-Mikrofon.</p>
+      <h3>Sendemodi</h3>
+      <p>In den <strong>Einstellungen</strong> (Zahnrad) unter „Eingabe“ wählst du, wann du übertragen wirst:</p>
+      <ul>
+        <li><strong>Sprachaktivierung – automatisch</strong> (empfohlen): Die Brücke erkennt deine Stimme selbst. Tastatur, Maus oder Lüfter öffnen dein Mikrofon nicht. Du musst nichts einstellen.</li>
+        <li><strong>Sprachaktivierung – eigene Schwelle</strong>: Wie früher – du legst mit einem Regler fest, wie laut du sein musst.</li>
+        <li><strong>Push-to-Talk</strong>: Du wirst nur übertragen, solange du eine Taste gedrückt hältst (Standard: <kbd>Leertaste</kbd>, änderbar – auch auf eine Maus-Seitentaste, siehe <a href="#tasten">Tastenkürzel</a>). Auf dem Handy erscheint dafür ein großer Knopf unten.</li>
+        <li><strong>Dauerhaft senden</strong>: Dein Mikrofon ist immer offen.</li>
+      </ul>
+      <p>Der Balken unter dem Sendemodus zeigt, wie laut dein Mikrofon gerade ist. Wird er <strong style="color:var(--talk)">grün</strong>, wirst du übertragen.</p>
+      <h3>Was die Brücke automatisch für dich macht</h3>
+      <ul>
+        <li><strong>KI-Rauschfilter</strong>: entfernt Tastaturtippen, Mausklicks, Lüfter, Brummen und Rauschen – auch während du sprichst. Auf langsamen Geräten schaltet die Brücke selbst auf einen leichteren Filter um.</li>
+        <li><strong>Lautstärke automatisch angleichen</strong>: Ist dein Mikrofon zu leise oder zu laut eingestellt, gleicht die Brücke das aus. Die anderen hören dich immer gleich laut, und laute Stellen werden sanft begrenzt statt zu verzerren.</li>
+        <li><strong>Trittschall- und Brummfilter</strong>: Tiefes Grollen (z.&nbsp;B. wenn du an den Tisch stößt) wird immer weggefiltert.</li>
+      </ul>
+      <p>Daneben gibt es noch die eingebauten Filter des Browsers (<strong>Echounterdrückung</strong>, Rauschunterdrückung, automatische Lautstärke). Die Echounterdrückung ist wichtig, wenn du Lautsprecher statt Kopfhörer benutzt.</p>
+      <h3>Mikrofon-Check und Mikrofontest</h3>
+      <ul>
+        <li>In den Einstellungen siehst du unter dem Pegelbalken den <strong>Mikrofon-Check</strong>. Sobald du etwas sagst, prüft die Brücke dein Mikrofon und sagt dir, ob es gut klingt, <strong>übersteuert</strong> (zu laut eingestellt, klingt verzerrt) oder <strong>sehr leise</strong> ist.</li>
+        <li>Mit <strong>Mikrofon testen</strong> sprichst du 5 Sekunden, danach hörst du dich selbst – genau so, wie dich die anderen hören, mit allen Filtern.</li>
+        <li>Stellt die Brücke während eines Gesprächs ein Problem fest, bekommst du einmal einen Hinweis.</li>
+      </ul>
+      <div class="tip"><strong>Mikrofon übersteuert oder zu leise?</strong>Das musst du in deinem Computer ändern, nicht im Browser: <em>Windows</em>: Rechtsklick auf das Lautsprecher-Symbol → Soundeinstellungen → dein Mikrofon → Eingangslautstärke. <em>Mac</em>: Systemeinstellungen → Ton → Eingang. Übersteuern lässt sich danach nicht mehr reparieren – lieber etwas leiser einstellen, den Rest gleicht die Brücke aus.</div>
+      <p>Mit der <strong>Mikrofonverstärkung</strong> kannst du zusätzlich von Hand lauter oder leiser machen – mit „Lautstärke automatisch angleichen“ ist das aber selten nötig.</p>
+    </section>
+
+    <section class="card" id="hoeren">
+      <h2>Hören &amp; Lautstärke</h2>
+      <ul>
+        <li><strong>Gesamtlautstärke</strong>: in den Einstellungen unter „Ausgabe“. Dort wählst du auch, über welchen <strong>Lautsprecher</strong> der Ton kommt – in Chrome, Edge und Opera direkt aus der Liste, in Firefox über „Gerät wählen…“. Auf dem iPhone und bei den meisten Handy-Browsern entscheidet das System (Kopfhörer oder Bluetooth anschließen, auf dem iPhone über das Kontrollzentrum).</li>
+        <li><strong>Einzelne Personen lauter oder leiser</strong>: Rechtsklick im Kanalbaum auf die Person (am Handy: lange drücken). Im Menü gibt es einen Regler von 0 bis 300&nbsp;%. Die Einstellung wird gemerkt.</li>
+        <li><strong>Jemanden nur für dich stummschalten</strong>: Rechtsklick auf die Person → „Lokal stummschalten“. Die anderen hören sie weiterhin.</li>
+        <li><strong>Mikrofon / Lautsprecher stummschalten</strong>: mit den Knöpfen oben (oder <kbd>M</kbd> und <kbd>L</kbd>). Das sehen die anderen auch an deinem Symbol.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="kanaele">
+      <h2>Kanäle &amp; Symbole</h2>
+      <p>Links siehst du alle Kanäle. Die Personen in einem Kanal stehen eingerückt darunter.</p>
+      <h3>Kanäle</h3>
+      <div class="legend">
+        <span class="demo"><span class="chan-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/></svg></span> Kanal</span><span>Ein normaler Kanal. Klick = markieren, Doppelklick = hineingehen, Rechtsklick = Menü.</span>
+        <span class="demo"><span class="chan-ico locked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/></svg></span> orange</span><span>Der Kanal hat ein <strong>Passwort</strong> oder ist <strong>voll</strong>.</span>
+        <span class="demo"><span class="count">4</span></span><span>So viele Personen sind im Kanal (bei begrenzten Kanälen z.&nbsp;B. „3/5“).</span>
+      </div>
+      <h3>Personen</h3>
+      <p>Jede Person hat einen runden Kreis mit ihrem Anfangsbuchstaben. Die Farbe gehört immer zum selben Namen.</p>
+      <div class="legend">
+        <span class="demo"><span class="talk-dot avatar" style="--hue:270">E</span> Eiki</span><span>Alles an – Mikrofon und Lautsprecher funktionieren.</span>
+        <span class="demo"><span class="talk-dot avatar ring" style="--hue:140">F</span> Funky</span><span><strong>Grüner Ring</strong>: spricht gerade.</span>
+        <span class="demo"><span class="talk-dot avatar state mic-off"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M9 9v2a3 3 0 0 0 5 2.2M15 10V6a3 3 0 0 0-5.7-1.3M5 11a7 7 0 0 0 11.5 5.3M19 11a7 7 0 0 1-.6 2.8M12 18v3"/></svg></span></span> Tosia</span><span><strong>Orange mit Mikrofon</strong>: Mikrofon stummgeschaltet – hört aber zu.</span>
+        <span class="demo"><span class="talk-dot avatar state sound-off"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg></span></span> Brokko</span><span><strong>Rot mit Lautsprecher</strong>: Sound aus – hört gerade nichts.</span>
+        <span class="demo"><span class="talk-dot avatar state hw-off"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M9 9v2a3 3 0 0 0 5 2.2M15 10V6a3 3 0 0 0-5.7-1.3M5 11a7 7 0 0 0 11.5 5.3M19 11a7 7 0 0 1-.6 2.8M12 18v3"/></svg></span></span> Gast</span><span><strong>Grau</strong>: Mikrofon oder Lautsprecher ist ganz deaktiviert.</span>
+      </div>
+      <p>Rechts neben dem Namen stehen die <strong>Servergruppen</strong> (z.&nbsp;B. „Admin“, „Web“) und das Land. Deinen eigenen Namen erkennst du an der fetten Schrift und dem grünen Hintergrund.</p>
+      <h3>Was du mit Kanälen machen kannst</h3>
+      <ul>
+        <li><strong>Markieren</strong>: einfacher Klick (am Handy: einmal tippen).</li>
+        <li><strong>Betreten</strong>: Doppelklick (am Handy: zweimal tippen). Bei Passwort-Kanälen wirst du nach dem Passwort gefragt.</li>
+        <li><strong>Menü</strong>: Rechtsklick (am Handy: lange drücken). Mit der Tastatur: markieren, dann <kbd>Enter</kbd> zum Betreten oder die Menütaste bzw. <kbd>Umschalt</kbd>+<kbd>F10</kbd> fürs Menü.</li>
+        <li><strong>Erstellen</strong>: mit dem <strong>+</strong> oben im Kanalbaum oder per Rechtsklick auf einen Kanal → „Unterkanal erstellen“.</li>
+        <li><strong>Infos ansehen</strong>: Rechtsklick auf den Kanal → „Kanalinfo“.</li>
+        <li><strong>Bearbeiten, verschieben, löschen</strong>: Rechtsklick auf den Kanal → „Kanal bearbeiten“, „Kanal verschieben“, „Kanalrechte“ oder „Kanal löschen“. Mehr dazu unter <a href="#verwaltung">Server verwalten &amp; Rechte</a>.</li>
+        <li><strong>Suchen</strong>: Über das Suchfeld oben findest du Kanäle und Personen schnell.</li>
+      </ul>
+      <p>Ob du einen Kanal betreten, erstellen, bearbeiten oder verschieben darfst, legen die Admins des Servers über die Rechte fest.</p>
+    </section>
+
+    <section class="card" id="verwaltung">
+      <h2>Server verwalten &amp; Rechte</h2>
+      <p>Admins können den Server in der Weboberfläche genauso verwalten wie im TeamSpeak-Programm. Was du davon benutzen darfst, entscheidet der TeamSpeak-Server anhand deiner Rechte. Fehlt dir ein Recht, steht in der Meldung, welches. Wer Admin werden soll, löst den ServerAdmin-Schlüssel ein: Klick auf dich selbst → „Berechtigungsschlüssel einlösen“.</p>
+      <h3>Serververwaltung</h3>
+      <p>Das <strong>Schild-Symbol</strong> <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg> oben in der Leiste öffnet die Serververwaltung, ebenso „Serverinfo“ → „Server verwalten“. Am Handy lassen sich die Reiter oben seitlich wischen. Die Serververwaltung hat diese Bereiche:</p>
+      <ul>
+        <li><strong>Server</strong>: Name, Willkommensnachricht, Slots, Passwort, Host-Nachricht, Banner und Button, Standardgruppen, Sicherheitslevel, Anti-Flood, Beschwerden, Übertragungsgrenzen und Protokollierung. „Server speichern“ schickt nur die geänderten Werte.</li>
+        <li><strong>Servergruppen</strong> und <strong>Kanalgruppen</strong>: Gruppen anlegen, kopieren, umbenennen und löschen, ihre Rechte bearbeiten und die Mitglieder sehen, hinzufügen und entfernen. Mitglieder fügst du über den Namen (wenn die Person online ist), die eindeutige ID oder die Datenbank-ID hinzu. Bei Kanalgruppen wählst du zusätzlich den Kanal. „Entfernen“ setzt die Person dort auf die Standard-Kanalgruppe zurück. Vorlagen und Query-Gruppen sind ausgeblendet, ein Haken unter der Liste zeigt sie an.</li>
+        <li><strong>Bans</strong>: Bannliste ansehen, Banns aufheben und neue anlegen (nach IP, Name oder eindeutiger ID). Webnutzer haben auf dem TeamSpeak die IP der Brücke, sperre sie deshalb über die eindeutige ID.</li>
+        <li><strong>Schlüssel</strong>: Berechtigungsschlüssel für eine Server- oder Kanalgruppe erstellen, kopieren und löschen.</li>
+        <li><strong>Beschwerden</strong>: ansehen und löschen.</li>
+        <li><strong>Temporäre Passwörter</strong>: Passwörter, mit denen jemand eine Zeit lang auf den Server kommt, ohne das eigentliche Serverpasswort zu kennen – auf Wunsch direkt in einen bestimmten Kanal.</li>
+      </ul>
+      <h3>Rechte bearbeiten</h3>
+      <p>Den Rechte-Editor gibt es für Servergruppen, Kanalgruppen, Kanäle, einzelne Personen und Personen in einem bestimmten Kanal. Er zeigt zuerst nur die gesetzten Rechte. Nimm den Haken bei „Nur gesetzte Rechte zeigen“ weg, um alle zu sehen, und suche nach Name oder Beschreibung oder wähle einen Bereich (z.&nbsp;B. „Kanal“ oder „Client“). Mit ↻ lädst du die Liste neu. Jede Änderung wird sofort gespeichert:</p>
+      <ul>
+        <li><strong>Wert</strong>: Haken bei Ja/Nein-Rechten (<code>b_…</code>), Zahl bei Werten (<code>i_…</code>).</li>
+        <li><strong>Skip</strong> (bei Servergruppen und Personen): Kanal- und Kanalgruppenrechte überschreiben den Wert nicht.</li>
+        <li><strong>Neg.</strong> (nur bei Servergruppen): Hat jemand mehrere Gruppen, gilt der niedrigste statt des höchsten Werts.</li>
+        <li><strong>Grant</strong>: welche Rechte-Bearbeitungsstärke jemand braucht, um dieses Recht anderen zu geben.</li>
+        <li><strong>✕</strong> entfernt das Recht wieder.</li>
+      </ul>
+      <div class="warn-box"><strong>Vorsicht bei den eigenen Gruppen</strong>Nimmst du deiner eigenen Gruppe Rechte wie <code>i_group_modify_power</code> oder <code>i_permission_modify_power</code> weg, kannst du dich selbst aussperren. Dann hilft nur noch der ServerAdmin-Schlüssel oder ein anderer Admin.</div>
+      <h3>Kanäle und Personen</h3>
+      <ul>
+        <li>Rechtsklick auf einen Kanal → <strong>„Kanal bearbeiten“</strong>, mit vier Reitern: <em>Allgemein</em> (Name, phonetischer Name, Thema, Beschreibung, Passwort), <em>Audio</em> (Codec, Qualität, Latenz, Verschlüsselung), <em>Erweitert</em> (Kanaltyp, Standardkanal, Nutzergrenzen auch für Unterkanäle, benötigte Talk Power, Löschverzögerung) und <em>Rechte</em> (Kanalrechte, z.&nbsp;B. <code>i_channel_needed_join_power</code>). „Kanalrechte“ im Menü öffnet direkt den letzten Reiter.</li>
+        <li>Beim <strong>Erstellen</strong> eines Kanals gibt es nur die wichtigsten Felder. Alles Weitere stellst du danach über „Kanal bearbeiten“ ein.</li>
+        <li>„<strong>Kanal verschieben</strong>“ hängt einen Kanal unter einen anderen oder ändert seine Reihenfolge.</li>
+        <li>Rechtsklick auf eine Person: <strong>Servergruppen</strong> an- und abhaken, <strong>Kanalgruppe</strong> setzen, <strong>Rechte</strong> (für die Person allgemein oder nur im aktuellen Kanal), <strong>Talk Power</strong> erteilen oder entziehen, <strong>Bannen</strong>.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="chat">
+      <h2>Chat &amp; Anstupsen</h2>
+      <ul>
+        <li>Rechts gibt es Reiter für den <strong>Kanal-Chat</strong> (nur die Leute in deinem Kanal sehen es – dieser Reiter ist beim Verbinden ausgewählt) und den <strong>Server-Chat</strong> (alle sehen es). Im Server-Reiter stehen außerdem Ereignisse: wer kommt und geht, neue Kanäle usw. Beitritte und Austritte kannst du in den Einstellungen ausblenden.</li>
+        <li><strong>Private Nachricht</strong>: Rechtsklick auf eine Person → „Private Nachricht“, oder Doppelklick auf die Person (am Handy: zweimal tippen). Es öffnet sich ein eigener Reiter.</li>
+        <li><strong>Anstupsen</strong> (Poke): Rechtsklick auf eine Person → „Anstupsen“. Bei ihr erscheint ein Fenster mit deiner Nachricht.</li>
+        <li>Neue Nachrichten in anderen Reitern siehst du an einer roten Zahl.</li>
+        <li>Du kannst <strong>fett</strong> mit <code>[b]Text[/b]</code>, <em>kursiv</em> mit <code>[i]Text[/i]</code> und Links schreiben – Links werden automatisch klickbar.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="identitaet">
+      <h2>Identitäten</h2>
+      <p class="lead">Deine Identität ist wie dein <strong>Ausweis</strong> auf dem Server. An ihr erkennt der Server dich wieder – auch wenn du einen anderen Nickname benutzt.</p>
+      <h3>Warum ist das wichtig?</h3>
+      <p>Alle deine <strong>Rechte und Servergruppen</strong> (z.&nbsp;B. „Mitglied“ oder „Admin“) hängen an deiner Identität. Hast du eine neue Identität, bist du für den Server ein Fremder. Jede Identität hat eine <strong>eindeutige ID</strong> (eine Zeichenkette wie <code>1OcqEQRDmksd4KvdY4dh8mhJj+A=</code>).</p>
+      <div class="warn-box"><strong>Deine Identität ist wie ein Passwort</strong>Gib sie niemals weiter. Wer sie hat, kann sich auf dem Server als du ausgeben – mit all deinen Rechten.</div>
+      <h3>Wo ist meine Identität gespeichert?</h3>
+      <p>Nur in <strong>diesem Browser</strong> auf <strong>diesem Gerät</strong>. Löschst du die Browserdaten („Verlauf und Websitedaten löschen“), ist sie weg. Deshalb: <strong>exportieren</strong> oder den <a href="#sync">Sync</a> einrichten.</p>
+      <h3>Deine Identität aus dem TeamSpeak-Programm übernehmen</h3>
+      <p>Wenn du TeamSpeak schon auf dem PC benutzt und dort deine Rechte hast, nimm diese Identität mit:</p>
+      <ol class="steps">
+        <li>Im TeamSpeak-3-Programm: <strong>Extras → Identitäten</strong>. (Im neueren TeamSpeak-6-Programm sind Identitäten anders organisiert – schau dort in den Einstellungen nach einem Export. Gibt es keinen, frag das Server-Team nach deinen Gruppen.)</li>
+        <li>Links deine Identität auswählen und unten auf <strong>Exportieren</strong> klicken. Die Datei (<code>.ini</code>) irgendwo speichern.</li>
+        <li>Hier auf der Startseite: <strong>Identitäten verwalten → Importieren</strong>.</li>
+        <li>Die gespeicherte Datei auswählen und auf <strong>Importieren</strong> klicken. Fertig – du bist jetzt mit derselben ID unterwegs wie im Programm.</li>
+      </ol>
+      <h3>Mehrere Identitäten</h3>
+      <p>Du kannst beliebig viele Identitäten haben, z.&nbsp;B. eine für den Alltag und eine zum Testen. Unter <strong>Identitäten verwalten</strong> kannst du:</p>
+      <ul>
+        <li><strong>Verwenden</strong> – diese Identität beim nächsten Verbinden benutzen (auch über die Auswahl auf der Startseite),</li>
+        <li><strong>Umbenennen</strong> – der Name ist nur für dich, der Server sieht ihn nicht,</li>
+        <li><strong>Exportieren</strong> – als Text oder <code>.ini</code>-Datei, die auch das TeamSpeak-Programm importieren kann,</li>
+        <li><strong>Löschen</strong> – Vorsicht, ohne Export ist sie für immer weg,</li>
+        <li><strong>Neu erstellen</strong> – eine ganz neue Identität (ohne Rechte).</li>
+      </ul>
+      <p>Hast du noch gar keine Identität, wird beim ersten Verbinden automatisch eine erstellt.</p>
+    </section>
+
+    <section class="card" id="sync">
+      <h2>Identitäten auf mehreren Geräten (Sync)</h2>
+      <p class="lead">Mit dem Sync hast du deine Identitäten auf dem PC, dem Laptop und dem Handy – und sie sind gesichert, falls die Browserdaten mal gelöscht werden.</p>
+      <h3>Einrichten (auf dem ersten Gerät)</h3>
+      <ol class="steps">
+        <li><strong>Identitäten verwalten</strong> öffnen und oben bei „Identitäten sichern“ auf <strong>Einrichten</strong> klicken.</li>
+        <li>Einen <strong>Namen</strong> ausdenken (z.&nbsp;B. deinen Nickname) und eine <strong>Passphrase</strong> (mindestens 10 Zeichen).</li>
+        <li>Auf <strong>Sicherung anlegen</strong> klicken.</li>
+      </ol>
+      <h3>Auf einem weiteren Gerät</h3>
+      <ol class="steps">
+        <li><strong>Identitäten verwalten</strong> → <strong>Anmelden</strong>.</li>
+        <li>Denselben Namen und dieselbe Passphrase eingeben. Deine Identitäten werden geladen.</li>
+      </ol>
+      <p>Ab dann gleichen sich die Geräte automatisch ab: Neue, umbenannte und gelöschte Identitäten tauchen überall auf. Mit <strong>Jetzt abgleichen</strong> geht es sofort.</p>
+      <div class="tip"><strong>Wie sicher ist das?</strong>Deine Identitäten werden <strong>in deinem Browser verschlüsselt</strong>, bevor sie gespeichert werden. Der Server bekommt weder deinen Namen noch deine Passphrase zu sehen – nur einen verschlüsselten Block. Auch die Betreiber können ihn nicht lesen. Nach 10 falschen Versuchen wird die Sicherung für 15 Minuten gesperrt.</div>
+      <div class="warn-box"><strong>Passphrase gut aufschreiben!</strong>Weil niemand außer dir die Passphrase kennt, kann sie auch <strong>niemand zurücksetzen</strong>. Ohne Passphrase kommst du nicht mehr an die Sicherung. Deine Identitäten auf deinen Geräten bleiben aber erhalten. Tipp: Mehrere Wörter sind sicher und leicht zu merken, z.&nbsp;B. „Kaffee Tisch Regen Gitarre“.</div>
+      <ul>
+        <li><strong>Abmelden</strong>: Dieses Gerät gleicht nicht mehr ab. Nichts wird gelöscht.</li>
+        <li><strong>Sicherung löschen</strong>: Die Sicherung wird vom Server entfernt. Die Identitäten auf deinen Geräten bleiben.</li>
+      </ul>
+      <p>Der Sync braucht eine sichere Verbindung (Adresse beginnt mit <code>https://</code>).</p>
+    </section>
+
+    <section class="card" id="hinweise">
+      <h2>Hinweise &amp; Sounds</h2>
+      <p>Wie im echten TeamSpeak sagt dir eine Stimme, was passiert – zum Beispiel „Benutzer hat deinen Kanal betreten“, „Du wurdest verschoben“ oder „Mikrofon stummgeschaltet“.</p>
+      <ul>
+        <li>In den Einstellungen unter <strong>Ausgabe → Hinweise</strong> wählst du: <em>Sprachansagen</em>, <em>Töne</em> (kurze Pieptöne) oder <em>Aus</em>. Die Hinweise haben eine eigene Lautstärke.</li>
+        <li>Unter <strong>Hinweise anpassen…</strong> kannst du jedes Ereignis einzeln ausschalten, mit <strong>▶</strong> anhören und mit <strong>Datei…</strong> einen <strong>eigenen Sound</strong> wählen (z.&nbsp;B. <code>.wav</code> oder <code>.mp3</code>). Mit <strong>✕</strong> kommt die normale Ansage zurück.</li>
+        <li>Hast du deinen <strong>Lautsprecher stummgeschaltet</strong> (Taste <kbd>L</kbd>), bekommst du auch keine Ansagen und Töne mehr – nur noch die Bestätigung „Lautsprecher stummgeschaltet“.</li>
+        <li>Die Stimme kommt von deinem Gerät. Je nach Computer oder Browser klingt sie daher etwas anders. In Microsoft Edge gibt es besonders natürliche Stimmen.</li>
+      </ul>
+      <div class="tip"><strong>Die Original-TeamSpeak-Sounds</strong>Wenn du TeamSpeak installiert hast, findest du die Sounds im Installationsordner unter <code>sound\default</code>. Du kannst sie über „Datei…“ für dich selbst einbinden.</div>
+    </section>
+
+    <section class="card" id="einstellungen">
+      <h2>Einstellungen im Überblick</h2>
+      <p>Die Einstellungen öffnest du über das <strong>Zahnrad</strong> – auf der Startseite oder oben in der Leiste. Alles wird in deinem Browser gespeichert.</p>
+      <ul>
+        <li><strong>Eingabe</strong>: Mikrofon, Sendemodus, Mikrofon-Check und -test, Verstärkung, Filter (siehe <a href="#mikrofon">Mikrofon</a>).</li>
+        <li><strong>Ausgabe</strong>: Lautsprecher, Gesamtlautstärke, Hinweise, Desktop-Benachrichtigungen bei Pokes und privaten Nachrichten, ob Beitritte und Austritte im Chat stehen.</li>
+        <li><strong>Tastenbelegung</strong>: alle Tastenkürzel ändern (siehe <a href="#tasten">Tastenkürzel</a>).</li>
+        <li><strong>Darstellung</strong>: helles oder dunkles Design; ob <strong>Bots</strong> (ServerQuery-Clients wie Ranksysteme) im Kanalbaum angezeigt werden – standardmäßig ausgeblendet.</li>
+        <li><strong>Identität</strong>: welche Identität aktiv ist, und der Weg zur Verwaltung.</li>
+      </ul>
+      <h3>Weitere Funktionen (Rechtsklick auf dich selbst im Kanalbaum, am Handy lange drücken)</h3>
+      <ul>
+        <li><strong>Nickname ändern</strong> und <strong>Beschreibung setzen</strong>.</li>
+        <li><strong>Berechtigungsschlüssel einlösen</strong> – wenn dir ein Admin einen Schlüssel gegeben hat, bekommst du damit eine Servergruppe.</li>
+        <li><strong>Servergruppen, Kanalgruppe und Rechte</strong> – deine eigenen ansehen und, wenn du darfst, ändern (siehe <a href="#verwaltung">Server verwalten &amp; Rechte</a>).</li>
+        <li><strong>Abwesend</strong>: über den Uhr-Knopf oben, mit optionaler Nachricht.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="mini">
+      <h2>Kleines Fenster</h2>
+      <p class="lead">Beim Spielen oder Arbeiten brauchst du nicht die ganze Seite: Das kleine Fenster zeigt nur das Wichtigste und bleibt neben deinen anderen Programmen sichtbar.</p>
+      <ol class="steps">
+        <li>Klicke oben in der Leiste auf das Symbol <strong>Kleines Fenster</strong> (Rechteck mit kleinem Kasten).</li>
+        <li>Es öffnet sich ein kompaktes Fenster mit deinem <strong>Kanal</strong>, den <strong>Leuten darin</strong> (wer spricht, leuchtet grün), der <strong>letzten Chat-Nachricht</strong> und Knöpfen für <strong>Mikrofon</strong> und <strong>Lautsprecher</strong>.</li>
+        <li>Mit dem Pfeil-Symbol oben rechts (oder dem Knopf in der Leiste) geht es zurück zum großen Fenster.</li>
+      </ol>
+      <ul>
+        <li>In <strong>Chrome und Edge</strong> bleibt das kleine Fenster <strong>immer im Vordergrund</strong>, auch über anderen Programmen. In Firefox und Safari ist es ein normales kleines Fenster.</li>
+        <li>Der Ton läuft weiter über den Browser-Tab. Den Tab also nicht schließen – nur in den Hintergrund legen.</li>
+        <li>Deine <a href="#tasten">Tastenkürzel</a> funktionieren auch, wenn das kleine Fenster ausgewählt ist. Bei Push-to-Talk gibt es darin einen Sprechknopf.</li>
+        <li>Blockiert der Browser das Fenster, erlaube Pop-ups für diese Seite (Symbol rechts in der Adressleiste).</li>
+      </ul>
+      <div class="tip"><strong>Über Spielen im Vollbild?</strong>Spiele im „exklusiven Vollbild“ verdecken auch das kleine Fenster. Stelle das Spiel auf <em>Fenster ohne Rahmen</em> (oft „Randloses Fenster“ oder „Borderless“), dann bleibt es sichtbar.</div>
+    </section>
+
+    <section class="card" id="tasten">
+      <h2>Tastenkürzel</h2>
+      <p>So sind die Tasten am Anfang belegt:</p>
+      <table class="keys">
+        <tr><td><kbd>Leertaste</kbd> (halten)</td><td>Sprechen bei Push-to-Talk</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Mikrofon stummschalten / wieder an</td></tr>
+        <tr><td><kbd>L</kbd></td><td>Lautsprecher stummschalten / wieder an</td></tr>
+        <tr><td>–</td><td>Abwesend / wieder da (am Anfang ohne Taste)</td></tr>
+        <tr><td><kbd>F1</kbd></td><td>Diese Hilfe öffnen</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Fenster, Menü oder Hilfe schließen (nicht änderbar)</td></tr>
+      </table>
+      <h3>Tasten ändern</h3>
+      <ol class="steps">
+        <li>Öffne die <strong>Einstellungen</strong> (Zahnrad) und scrolle zu <strong>Tastenbelegung</strong>.</li>
+        <li>Klicke bei der gewünschten Aktion auf <strong>Ändern</strong>. Der Knopf blinkt blau.</li>
+        <li>Drücke die neue Taste. Das kann auch eine <strong>Kombination</strong> sein (z.&nbsp;B. <kbd>Strg</kbd> + <kbd>Umschalt</kbd> + <kbd>M</kbd>), eine einzelne Taste wie <kbd>Strg</kbd> (drücken und loslassen) oder eine <strong>Maus-Seitentaste</strong>.</li>
+        <li>Fertig – die Belegung wird sofort gespeichert. Mit <kbd>Esc</kbd> brichst du ab, mit <strong>✕</strong> entfernst du eine Taste.</li>
+      </ol>
+      <ul>
+        <li>Ist eine Taste schon für etwas anderes belegt, wird sie dort automatisch entfernt – du bekommst einen Hinweis.</li>
+        <li><strong>Standard wiederherstellen</strong> setzt alles auf die Belegung oben zurück.</li>
+        <li>Für Push-to-Talk eignen sich die <strong>Seitentasten der Maus</strong> besonders gut. Solange sie belegt sind, blättern sie im Browser nicht mehr vor und zurück.</li>
+      </ul>
+      <div class="warn-box"><strong>Nur im aktiven Fenster</strong>Ein Browser darf Tasten nur sehen, solange sein Fenster im Vordergrund ist. Spielst du nebenbei ein Spiel im Vollbild, funktionieren die Tastenkürzel deshalb nicht. Dann hilft <strong>Sprachaktivierung</strong> statt Push-to-Talk.</div>
+      <p class="muted small">Die Kürzel funktionieren nicht, während du in ein Textfeld tippst (z.&nbsp;B. im Chat) und solange die Einstellungen offen sind.</p>
+    </section>
+
+    <section class="card" id="handy">
+      <h2>Auf dem Handy &amp; als App</h2>
+      <ul>
+        <li>TS3 Web passt sich dem Handy an. Unten wechselst du zwischen <strong>Kanälen</strong> und <strong>Chat</strong>.</li>
+        <li>Bei Push-to-Talk erscheint unten ein großer <strong>Sprechknopf</strong>: gedrückt halten zum Sprechen.</li>
+        <li><strong>Als App installieren</strong>: Im Browser-Menü „Zum Startbildschirm hinzufügen“ (Android: Chrome-Menü; iPhone: Teilen-Knopf in Safari). Dann startet TS3 Web wie eine App.</li>
+        <li>Wenn das Handy den Bildschirm sperrt, stoppen manche Browser die Verbindung nach einer Weile. Das liegt am Handy, nicht an TS3 Web.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="probleme">
+      <h2>Wenn etwas nicht klappt</h2>
+      <details class="faq"><summary>Die anderen hören mich nicht</summary>
+        <ul>
+          <li>Hat der Browser das <strong>Mikrofon erlaubt</strong>? Klicke links neben der Adresse auf das Schloss-Symbol und erlaube das Mikrofon. Danach die Seite neu laden.</li>
+          <li>Ist dein Mikrofon <strong>stummgeschaltet</strong> (Taste <kbd>M</kbd>, orangenes Symbol)?</li>
+          <li>Wird der Pegelbalken in den Einstellungen beim Sprechen <strong>grün</strong>? Wenn nicht: Mach einen <strong>Mikrofontest</strong> und schau auf den Mikrofon-Check, siehe <a href="#mikrofon">Mikrofon</a>.</li>
+          <li>Ist in den Einstellungen das <strong>richtige Mikrofon</strong> ausgewählt?</li>
+          <li>Steht unten „Du darfst in diesem Kanal nicht sprechen“? Dann fehlt dir in diesem Kanal das Recht dazu.</li>
+        </ul>
+      </details>
+      <details class="faq"><summary>Ich höre die anderen nicht</summary>
+        <ul>
+          <li>Ist dein <strong>Lautsprecher stummgeschaltet</strong> (Taste <kbd>L</kbd>)?</li>
+          <li>Ist die Gesamtlautstärke oder die Lautstärke der Person auf 0 („lokal stumm“)?</li>
+          <li>Ist der richtige Lautsprecher gewählt und der Tab im Browser nicht stummgeschaltet?</li>
+          <li>Klicke einmal irgendwo auf die Seite – manche Browser starten den Ton erst nach einem Klick.</li>
+        </ul>
+      </details>
+      <details class="faq"><summary>„Diese Seite läuft ohne HTTPS“ / Mikrofon nicht verfügbar</summary>
+        <p>Browser erlauben das Mikrofon nur über sichere Verbindungen (<code>https://</code>). Ohne HTTPS kannst du nur zuhören. Sag den Betreibern Bescheid.</p>
+      </details>
+      <details class="faq"><summary>„Du bist auf diesem Server gebannt“</summary>
+        <p>Der Server lässt dich nicht hinein. Unter der Meldung stehen Grund und Dauer. Wenn du denkst, dass das ein Fehler ist, wende dich an die Admins des Servers.</p>
+      </details>
+      <details class="faq"><summary>Meine Rechte / Servergruppen sind weg</summary>
+        <p>Du benutzt vermutlich eine andere Identität als sonst – zum Beispiel, weil die Browserdaten gelöscht wurden oder du auf einem anderen Gerät bist. Importiere deine Identität aus dem TeamSpeak-Programm oder melde dich beim <a href="#sync">Sync</a> an. Siehe <a href="#identitaet">Identitäten</a>.</p>
+      </details>
+      <details class="faq"><summary>„Dafür fehlen dir die Rechte“ beim Verwalten</summary>
+        <p>Der TeamSpeak-Server erlaubt dir diese Änderung nicht. In Klammern steht, welches Recht fehlt (z.&nbsp;B. <code>b_virtualserver_modify_name</code>). Bitte einen Admin, dir das Recht oder eine passende Gruppe zu geben, oder löse einen Berechtigungsschlüssel ein. Steht dort „Gruppen-Bearbeitungsstärke“ oder „Rechte-Bearbeitungsstärke“, ist die Gruppe bzw. das Recht für deine Stärke zu hoch. Die Werte <code>i_group_modify_power</code> und <code>i_permission_modify_power</code> deiner Gruppe müssen mindestens so hoch sein wie die benötigte Stärke.</p>
+      </details>
+      <details class="faq"><summary>In der Serververwaltung fehlen Felder oder Listen bleiben leer</summary>
+        <p>Der Server schickt nur, was du sehen darfst. Fehlen dir Rechte zum Ansehen (z.&nbsp;B. für die Bannliste oder die Servereinstellungen), erscheint eine Fehlermeldung oder die Felder fehlen. Eine leere Liste kann aber auch einfach bedeuten, dass es nichts gibt – etwa keine Banns. Mit ↻ bzw. durch erneutes Öffnen lädst du neu.</p>
+      </details>
+      <details class="faq"><summary>Der Ton ist abgehackt oder verzögert</summary>
+        <ul>
+          <li>Oben neben dem Servernamen siehst du deinen <strong>Ping</strong> und ob Daten verloren gehen. Ein schwaches WLAN oder mobiles Netz ist oft die Ursache.</li>
+          <li>Schließe andere Tabs, die viel Leistung brauchen (z.&nbsp;B. Videos).</li>
+        </ul>
+      </details>
+      <details class="faq"><summary>Meine Tastatur oder mein Lüfter ist trotzdem zu hören</summary>
+        <p>Prüfe, ob der <strong>KI-Rauschfilter</strong> an ist und als Sendemodus <strong>„Sprachaktivierung – automatisch“</strong> gewählt ist. Steht im Mikrofon-Check „Rauschfilter: leicht“, ist dein Gerät für den starken Filter zu langsam – dann hilft es, andere Programme zu schließen. Mit Push-to-Talk hört man garantiert nur, was du willst.</p>
+      </details>
+      <details class="faq"><summary>Die anderen sagen, ich klinge verzerrt oder zu leise</summary>
+        <p>Schau in den Einstellungen auf den <strong>Mikrofon-Check</strong> und mach einen <strong>Mikrofontest</strong>. Meist ist das Mikrofon im Computer zu laut (verzerrt) oder zu leise eingestellt – siehe <a href="#mikrofon">Mikrofon &amp; Sprechen</a>.</p>
+      </details>
+      <details class="faq"><summary>„Verbindung zum TeamSpeak-Server unterbrochen“</summary>
+        <p>TS3 Web versucht automatisch, die Verbindung wiederherzustellen. Klappt es nicht, lade die Seite neu und verbinde dich erneut.</p>
+      </details>
+      <details class="faq"><summary>Beim Sync steht „Name oder Passphrase falsch“</summary>
+        <p>Achte auf Groß- und Kleinschreibung der <strong>Passphrase</strong> (beim Namen ist sie egal). Nach 10 Fehlversuchen musst du 15 Minuten warten.</p>
+      </details>
+    </section>
+
+    <section class="card" id="datenschutz">
+      <h2>Datenschutz: Was wird wo gespeichert?</h2>
+      <ul>
+        <li><strong>In deinem Browser</strong>: deine Identitäten, Einstellungen, eigene Sounds, Lautstärken pro Person und – wenn du „Eingaben merken“ aktiviert hast – Nickname und Kanal. Passwörter für Server und Kanäle werden <strong>nicht</strong> gespeichert.</li>
+        <li><strong>Auf dem Server dieser Seite</strong>: nur deine verschlüsselte Sync-Sicherung, falls du den Sync eingerichtet hast. Niemand außer dir kann sie lesen.</li>
+        <li><strong>Während du verbunden bist</strong>: Die Seite leitet Ton und Chat zwischen deinem Browser und dem TeamSpeak-Server weiter, wie das TeamSpeak-Programm auch. Ton und Nachrichten werden dabei nicht gespeichert.</li>
+        <li>Der TeamSpeak-Server sieht deinen Nickname, deine eindeutige ID und die Adresse dieser Seite (nicht deine eigene).</li>
+      </ul>
+      <p>Alles im Browser löschst du über die Browser-Einstellungen („Websitedaten löschen“) – vorher Identitäten exportieren!</p>
+    </section>
+
+  </main>
+</div>
+<script src="help.js"></script>
+</body>
+</html>
