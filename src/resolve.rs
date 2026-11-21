@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use futures::prelude::*;
 use hickory_resolver::TokioResolver;
-use hickory_resolver::config::{CLOUDFLARE, ResolverConfig, ResolverOpts};
+use hickory_resolver::config::{CLOUDFLARE, GOOGLE, ResolverConfig};
 use hickory_resolver::net::runtime::TokioRuntimeProvider;
 use hickory_resolver::proto::rr::RData;
 use tracing::{debug, info, warn};
@@ -33,12 +33,12 @@ fn split_host_port(address: &str) -> (String, Option<u16>) {
 	}
 }
 
-fn create_resolver() -> Option<TokioResolver> {
+fn system_resolver() -> Option<TokioResolver> {
 	let (config, options) = match hickory_resolver::system_conf::read_system_conf() {
 		Ok(c) => c,
 		Err(error) => {
-			warn!(%error, "System-DNS-Konfiguration nicht lesbar, nutze Cloudflare");
-			(ResolverConfig::udp_and_tcp(&CLOUDFLARE), ResolverOpts::default())
+			warn!(%error, "System-DNS-Konfiguration nicht lesbar");
+			return None;
 		}
 	};
 	let mut builder = TokioResolver::builder_with_config(config, TokioRuntimeProvider::default());
@@ -46,31 +46,52 @@ fn create_resolver() -> Option<TokioResolver> {
 	builder.build().ok()
 }
 
-/// Look up `_ts3._udp.<host>` and return the targets ordered by priority (ascending)
-/// and weight (descending).
-async fn srv_targets(host: &str) -> Vec<(String, u16)> {
-	let Some(resolver) = create_resolver() else { return Vec::new() };
-	let name = format!("_ts3._udp.{}.", host.trim_end_matches('.'));
-	let lookup = match tokio::time::timeout(Duration::from_secs(5), resolver.srv_lookup(name.clone())).await
-	{
-		Ok(Ok(l)) => l,
+/// Public DNS servers, for when the system resolver does not answer SRV queries
+/// (seen on Windows with some routers and VPN adapters).
+fn public_resolver() -> Option<TokioResolver> {
+	let mut config = ResolverConfig::udp_and_tcp(&CLOUDFLARE);
+	for ns in ResolverConfig::udp_and_tcp(&GOOGLE).name_servers() {
+		config.add_name_server(ns.clone());
+	}
+	TokioResolver::builder_with_config(config, TokioRuntimeProvider::default()).build().ok()
+}
+
+async fn srv_query(resolver: Option<TokioResolver>, name: &str, which: &str) -> Vec<(u16, u16, String, u16)> {
+	let Some(resolver) = resolver else { return Vec::new() };
+	match tokio::time::timeout(Duration::from_secs(4), resolver.srv_lookup(name.to_string())).await {
+		Ok(Ok(l)) => l
+			.answers()
+			.iter()
+			.filter_map(|r| match &r.data {
+				RData::SRV(srv) => Some((srv.priority, srv.weight, srv.target.to_ascii(), srv.port)),
+				_ => None,
+			})
+			.collect(),
 		Ok(Err(error)) => {
-			debug!(%name, %error, "Kein SRV-Eintrag");
-			return Vec::new();
+			debug!(%name, %error, resolver = which, "Kein SRV-Eintrag");
+			Vec::new()
 		}
 		Err(_) => {
-			warn!(%name, "SRV-Abfrage: Zeitüberschreitung");
-			return Vec::new();
+			warn!(%name, resolver = which, "SRV-Abfrage: Zeitüberschreitung");
+			Vec::new()
 		}
+	}
+}
+
+/// Look up `_ts3._udp.<host>` (system DNS and public DNS at the same time) and
+/// return the targets ordered by priority (ascending) and weight (descending).
+async fn srv_targets(host: &str) -> Vec<(String, u16)> {
+	let name = format!("_ts3._udp.{}.", host.trim_end_matches('.'));
+	let (system, public) =
+		future::join(srv_query(system_resolver(), &name, "System"), srv_query(public_resolver(), &name, "öffentlich")).await;
+	let mut srvs = if system.is_empty() {
+		if !public.is_empty() {
+			info!(%name, "SRV-Eintrag nur über öffentliches DNS gefunden");
+		}
+		public
+	} else {
+		system
 	};
-	let mut srvs: Vec<_> = lookup
-		.answers()
-		.iter()
-		.filter_map(|r| match &r.data {
-			RData::SRV(srv) => Some((srv.priority, srv.weight, srv.target.to_ascii(), srv.port)),
-			_ => None,
-		})
-		.collect();
 	srvs.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)));
 	srvs.into_iter()
 		.map(|(_, _, target, port)| (target.trim_end_matches('.').to_string(), port))
@@ -79,11 +100,19 @@ async fn srv_targets(host: &str) -> Vec<(String, u16)> {
 
 async fn lookup(host: &str, port: u16) -> Vec<SocketAddr> {
 	match tokio::net::lookup_host((host, port)).await {
-		Ok(addrs) => addrs.collect(),
-		Err(error) => {
-			debug!(%host, %error, "Auflösung fehlgeschlagen");
-			Vec::new()
+		Ok(addrs) => {
+			let v: Vec<SocketAddr> = addrs.collect();
+			if !v.is_empty() {
+				return v;
+			}
 		}
+		Err(error) => debug!(%host, %error, "Auflösung über das System fehlgeschlagen"),
+	}
+	// Fallback: public DNS
+	let Some(r) = public_resolver() else { return Vec::new() };
+	match tokio::time::timeout(Duration::from_secs(4), r.lookup_ip(format!("{}.", host.trim_end_matches('.')))).await {
+		Ok(Ok(ips)) => ips.iter().map(|ip| SocketAddr::new(ip, port)).collect(),
+		_ => Vec::new(),
 	}
 }
 
@@ -144,5 +173,17 @@ mod tests {
 	async fn ip_passthrough() {
 		assert_eq!(resolve("127.0.0.1:1234").await, vec!["127.0.0.1:1234".parse().unwrap()]);
 		assert_eq!(resolve("127.0.0.1").await, vec!["127.0.0.1:9987".parse().unwrap()]);
+	}
+}
+
+#[cfg(test)]
+mod srv_live {
+	/// Manual check: `SRV_HOST=example.com cargo test srv_live -- --ignored --nocapture`
+	#[tokio::test]
+	#[ignore]
+	async fn srv_live() {
+		let host = std::env::var("SRV_HOST").unwrap_or_else(|_| "gommehd.net".into());
+		println!("SRV {host}: {:?}", super::srv_targets(&host).await);
+		println!("resolve {host}: {:?}", super::resolve(&host).await);
 	}
 }

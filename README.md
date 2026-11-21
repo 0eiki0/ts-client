@@ -40,6 +40,8 @@ Dazu kommt:
   - **Windows:** Tastatur und Maustasten (auch die Seitentasten)
   - **macOS:** Tastatur und mittlere Maustaste. macOS fragt beim ersten Start nach der Erlaubnis für **Bedienungshilfen**: *Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen* → „Funkraum“ einschalten, dann die App neu starten.
   - **Linux:** Tastatur und mittlere Maustaste unter X11. Unter Wayland werden nur Tasten erkannt, die in X11-Programmen gedrückt werden.
+- **Benachrichtigungen** bei Anstupsern und privaten Nachrichten als normale Systembenachrichtigung (Windows: Absender „Funkraum“), einschalten unter *Einstellungen → Desktop-Benachrichtigungen*.
+- **Serveradressen mit SRV-Eintrag** (`_ts3._udp.example.com`) werden wie im TeamSpeak-Programm aufgelöst. Antwortet das DNS des Systems nicht, fragt die App zusätzlich Cloudflare und Google.
 - Identitäten und Einstellungen bleiben auf dem Rechner gespeichert:
   - Windows: `%LOCALAPPDATA%\funkraum`
   - macOS: `~/Library/Application Support/funkraum`

@@ -25,9 +25,13 @@ wry = "0.57.3"
 tao = "0.37.3"
 dirs = "7.0.0"
 device_query = "4.0.1"
+notify-rust = "4.19.0"
 
 [profile.release]
 opt-level = 3
 lto = "thin"
 strip = true
 codegen-units = 1
+
+[target."cfg(windows)".dependencies]
+winreg = "0.56.0"

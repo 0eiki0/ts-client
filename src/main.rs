@@ -11,6 +11,7 @@ mod admin;
 mod bans;
 mod capture;
 mod hotkeys;
+mod notify;
 mod protocol;
 mod query;
 mod resolve;
@@ -98,10 +99,13 @@ fn main() -> Result<()> {
 		.build(&event_loop)
 		.context("Fenster")?;
 
+	notify::init();
 	let mut context = WebContext::new(Some(data.join("webview")));
 	let builder = WebViewBuilder::new_with_web_context(&mut context)
 		.with_url(url)
 		.with_autoplay(true)
+		.with_initialization_script(notify::INIT_SCRIPT)
+		.with_ipc_handler(|req| notify::handle_ipc(req.body()))
 		.with_permission_handler(|kind| match kind {
 			PermissionKind::Microphone => PermissionResponse::Allow,
 			_ => PermissionResponse::Default,
