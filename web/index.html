@@ -233,6 +233,11 @@
     </label>
     <label class="check"><input type="checkbox" id="s-show-query"> ServerQuery-Clients (Bots) im Kanalbaum anzeigen</label>
 
+    <h3>Programm</h3>
+    <p class="small">Funkraum <span id="s-app-version">–</span></p>
+    <div class="row wrap"><button type="button" id="s-app-update">Nach Updates suchen</button></div>
+    <p class="muted small" id="s-app-update-info"></p>
+
     <h3>Identität</h3>
     <p class="muted small">Die Identität bestimmt deine eindeutige ID auf dem Server (Servergruppen, Rechte). Sie wird nur in diesem Browser gespeichert. Du kannst sie auch schon vor dem Verbinden auf der Anmeldeseite importieren.</p>
     <p class="small">Aktiv: <strong id="s-id-name"></strong><br>Eindeutige ID: <code id="s-uid">–</code></p>
@@ -243,6 +248,7 @@
 </template>
 
 <script src="app.js"></script>
+<script src="desktop.js"></script>
 <script src="manage.js"></script>
 </body>
 </html>

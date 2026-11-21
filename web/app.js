@@ -318,7 +318,7 @@ async function init() {
   }
   document.title = S.config.title;
   $('#app-title').textContent = S.config.title;
-  $('#login-server-label').textContent = S.config.allow_any_server ? 'Sprachchat im Browser' : `Server: ${S.config.server}`;
+  $('#login-server-label').textContent = S.config.allow_any_server ? 'Sprachchat' : `Server: ${S.config.server}`;
   $('#row-address').hidden = !S.config.allow_any_server;
   $('#row-access').hidden = !S.config.needs_access_password;
   if (!window.isSecureContext) $('#insecure-warning').hidden = false;

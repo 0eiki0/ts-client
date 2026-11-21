@@ -16,13 +16,13 @@ Unter **[Releases](https://github.com/0eiki0/ts-client/releases)** (Release „l
 | macOS 11+ (Intel und Apple Silicon) | `Funkraum-macOS.zip` – entpacken, `Funkraum.app` in „Programme“ ziehen |
 | Linux (x86_64) | `Funkraum-Linux-x86_64` – `chmod +x` und starten |
 
-### Automatische Updates
+### Updates
 
-Funkraum sucht beim Start und danach alle 6 Stunden nach einer neuen Version im Release „latest“. Gibt es eine, lädt Funkraum sie herunter, prüft sie mit der Prüfsumme (`.sha256`) und ersetzt sich selbst. Die neue Version läuft ab dem nächsten Start, ein Hinweis im Fenster sagt Bescheid.
+Funkraum sucht beim Start und danach alle 6 Stunden nach einer neuen Version im Release „latest“. Gibt es eine, erscheint oben im Fenster ein Hinweis **„Neue Version verfügbar – Jetzt aktualisieren / Später“**. Erst wenn du zustimmst, wird die neue Version geladen, mit der Prüfsumme (`.sha256`) geprüft und installiert. Danach kannst du Funkraum mit **„Jetzt neu starten“** direkt neu starten (eine laufende Verbindung wird dabei kurz getrennt) oder später.
 
-- Von Hand prüfen: `funkraum --update` (Windows: `Funkraum-Windows.exe --update`)
-- Ausschalten: mit `--no-update` starten oder die Umgebungsvariable `FUNKRAUM_NO_UPDATE=1` setzen
-- Liegt das Programm in einem Ordner ohne Schreibrechte (z. B. `/usr/local/bin`), meldet Funkraum die neue Version nur und du lädst sie selbst herunter.
+- Unter *Einstellungen → Programm* stehen die installierte Version und der Knopf **„Nach Updates suchen“**.
+- Klappt die Installation nicht (z. B. keine Schreibrechte im Programmordner), öffnet **„Download öffnen“** die Download-Seite.
+- Kommandozeile: `funkraum --update` sucht und installiert ohne Rückfrage; mit `--no-update` oder `FUNKRAUM_NO_UPDATE=1` sucht Funkraum gar nicht.
 
 ### Beim ersten Start
 

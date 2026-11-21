@@ -47,8 +47,26 @@ const ICON_RGBA: &[u8] = include_bytes!("../packaging/icon-128.rgba");
 
 enum UserEvent {
 	Input(String),
-	/// A message shown in the window (via the page's `toast`).
-	Toast(String, &'static str),
+	/// A message from the page (`window.ipc.postMessage`).
+	Ipc(String),
+	/// New state of the update (shown in the window).
+	Update(serde_json::Value),
+}
+
+/// Update state for the page (`window.funkraum.update(…)` in desktop.js).
+fn update_state(state: &str, extra: serde_json::Value) -> serde_json::Value {
+	let mut v = serde_json::json!({
+		"state": state,
+		"build": updater::build(),
+		"version": env!("CARGO_PKG_VERSION"),
+		"enabled": updater::enabled(),
+	});
+	if let (Some(o), Some(e)) = (v.as_object_mut(), extra.as_object()) {
+		for (k, x) in e {
+			o.insert(k.clone(), x.clone());
+		}
+	}
+	v
 }
 
 fn data_dir() -> PathBuf {
@@ -83,11 +101,11 @@ fn main() -> Result<()> {
 			println!("Updates sind für diesen Build ausgeschaltet (lokal gebaut oder --no-update).");
 			return Ok(());
 		}
-		match updater::check_and_install(&data) {
-			updater::Outcome::Current => println!("Funkraum ist aktuell (Build {}).", updater::build()),
-			updater::Outcome::Installed => println!("Neue Version installiert – sie startet beim nächsten Öffnen."),
-			updater::Outcome::Failed(e) => {
-				println!("Update fehlgeschlagen: {e}");
+		match updater::check().and_then(|p| p.map(|p| updater::install(&p, &data).map(|_| p)).transpose()) {
+			Ok(None) => println!("Funkraum ist aktuell (Build {}).", updater::build()),
+			Ok(Some(p)) => println!("Neue Version {} installiert – sie startet beim nächsten Öffnen.", p.short()),
+			Err(e) => {
+				println!("Update fehlgeschlagen: {e:#}");
 				std::process::exit(1);
 			}
 		}
@@ -96,7 +114,19 @@ fn main() -> Result<()> {
 
 	let cfg = Arc::new(Config { ts_server: String::new(), allow_any_server: true, verbose: 0 });
 	let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().context("tokio")?;
-	let url = match rt.block_on(tokio::net::TcpListener::bind(("127.0.0.1", PORT))) {
+	// After "restart" the old process may still hold the port for a moment.
+	let bound = rt.block_on(async {
+		let mut last = None;
+		for _ in 0..30 {
+			match tokio::net::TcpListener::bind(("127.0.0.1", PORT)).await {
+				Ok(l) => return Ok(l),
+				Err(e) => last = Some(e),
+			}
+			tokio::time::sleep(Duration::from_millis(100)).await;
+		}
+		Err(last.unwrap())
+	});
+	let url = match bound {
 		Ok(listener) => {
 			let addr = listener.local_addr()?;
 			let app = web::router(cfg, addr);
@@ -129,7 +159,12 @@ fn main() -> Result<()> {
 		.with_url(url)
 		.with_autoplay(true)
 		.with_initialization_script(notify::INIT_SCRIPT)
-		.with_ipc_handler(|req| notify::handle_ipc(req.body()))
+		.with_ipc_handler({
+			let proxy = event_loop.create_proxy();
+			move |req| {
+				let _ = proxy.send_event(UserEvent::Ipc(req.body().clone()));
+			}
+		})
 		.with_permission_handler(|kind| match kind {
 			PermissionKind::Microphone => PermissionResponse::Allow,
 			_ => PermissionResponse::Default,
@@ -155,34 +190,30 @@ fn main() -> Result<()> {
 		})
 	})?;
 
-	// Automatic updates: shortly after the start, then every 6 hours.
+	// Updates: look shortly after the start, then every 6 hours. Installing
+	// only happens after the user agreed (bar in the window, desktop.js).
+	let pending: Arc<std::sync::Mutex<Option<updater::Pending>>> = Default::default();
 	if updater::enabled() {
 		let proxy = event_loop.create_proxy();
-		let dir = data.clone();
+		let pending = pending.clone();
 		std::thread::Builder::new().name("updater".into()).spawn(move || {
-			std::thread::sleep(Duration::from_secs(20));
+			std::thread::sleep(Duration::from_secs(15));
 			loop {
-				match updater::check_and_install(&dir) {
-					updater::Outcome::Installed => {
-						let _ = proxy.send_event(UserEvent::Toast(
-							"Eine neue Version von Funkraum wurde installiert. Sie startet beim nächsten Öffnen.".into(),
-							"",
-						));
-						break;
+				match updater::check() {
+					Ok(Some(p)) => {
+						let commit = p.short().to_string();
+						*pending.lock().unwrap() = Some(p);
+						let _ = proxy.send_event(UserEvent::Update(update_state("available", serde_json::json!({ "new": commit }))));
 					}
-					updater::Outcome::Failed(reason) => {
-						let _ = proxy.send_event(UserEvent::Toast(
-							format!("Neue Version verfügbar, automatisch installieren ging nicht ({reason}). Download: {}", updater::RELEASES_PAGE),
-							"error",
-						));
-						break;
-					}
-					updater::Outcome::Current => {}
+					Ok(None) => {}
+					Err(error) => tracing::debug!(error = %format!("{error:#}"), "Update-Prüfung nicht möglich"),
 				}
 				std::thread::sleep(Duration::from_secs(6 * 3600));
 			}
 		})?;
 	}
+	let proxy = event_loop.create_proxy();
+	let mut last_update = update_state("idle", serde_json::json!({}));
 
 	let mut webview = Some(webview);
 	let mut focused = true;
@@ -198,9 +229,74 @@ fn main() -> Result<()> {
 				std::thread::sleep(Duration::from_millis(600));
 				*control_flow = ControlFlow::Exit;
 			}
-			Event::UserEvent(UserEvent::Toast(text, kind)) => {
-				if let (Some(w), Ok(t)) = (&webview, serde_json::to_string(&text)) {
-					let _ = w.evaluate_script(&format!("typeof toast === 'function' && toast({t}, '{kind}')"));
+			Event::UserEvent(UserEvent::Update(state)) => {
+				if let Some(w) = &webview {
+					let _ = w.evaluate_script(&format!("window.funkraum && window.funkraum.update({state})"));
+				}
+				last_update = state;
+			}
+			Event::UserEvent(UserEvent::Ipc(msg)) => {
+				let kind = serde_json::from_str::<serde_json::Value>(&msg)
+					.ok()
+					.and_then(|v| v.get("t").and_then(|t| t.as_str()).map(str::to_string))
+					.unwrap_or_default();
+				match kind.as_str() {
+					"notify" => notify::handle_ipc(&msg),
+					// The page (re)loaded: tell it the current update state.
+					"hello" => {
+						if let Some(w) = &webview {
+							let _ = w.evaluate_script(&format!("window.funkraum && window.funkraum.update({last_update})"));
+						}
+					}
+					"update-check" => {
+						let (proxy, pending) = (proxy.clone(), pending.clone());
+						let _ = proxy.send_event(UserEvent::Update(update_state("checking", serde_json::json!({}))));
+						std::thread::spawn(move || {
+							let state = if !updater::enabled() {
+								update_state("disabled", serde_json::json!({}))
+							} else {
+								match updater::check() {
+									Ok(Some(p)) => {
+										let commit = p.short().to_string();
+										*pending.lock().unwrap() = Some(p);
+										update_state("available", serde_json::json!({ "new": commit }))
+									}
+									Ok(None) => update_state("current", serde_json::json!({})),
+									Err(e) => update_state("check-failed", serde_json::json!({ "reason": format!("{e:#}") })),
+								}
+							};
+							let _ = proxy.send_event(UserEvent::Update(state));
+						});
+					}
+					"update-install" => {
+						let p = pending.lock().unwrap().clone();
+						if let Some(p) = p {
+							let (proxy, dir) = (proxy.clone(), data.clone());
+							let _ = proxy.send_event(UserEvent::Update(update_state("installing", serde_json::json!({ "new": p.short() }))));
+							std::thread::spawn(move || {
+								let state = match updater::install(&p, &dir) {
+									Ok(()) => update_state("installed", serde_json::json!({ "new": p.short() })),
+									Err(e) => {
+										tracing::warn!(error = %format!("{e:#}"), "Update fehlgeschlagen");
+										update_state("failed", serde_json::json!({ "reason": format!("{e:#}"), "new": p.short() }))
+									}
+								};
+								let _ = proxy.send_event(UserEvent::Update(state));
+							});
+						}
+					}
+					"open-releases" => updater::open_releases(),
+					"restart" => {
+						if let Err(error) = updater::restart() {
+							tracing::warn!(%error, "Neustart fehlgeschlagen");
+						} else {
+							window.set_visible(false);
+							webview.take();
+							std::thread::sleep(Duration::from_millis(400));
+							*control_flow = ControlFlow::Exit;
+						}
+					}
+					_ => {}
 				}
 			}
 			Event::UserEvent(UserEvent::Input(json)) => {

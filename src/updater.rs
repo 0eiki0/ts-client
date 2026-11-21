@@ -3,8 +3,9 @@
 //! Every build knows the commit it was built from (`FUNKRAUM_BUILD`, set by the
 //! build workflow). The release "latest" is created for one commit and holds the
 //! files for all systems. If its commit differs from ours and the file for this
-//! system is there, it is downloaded, checked against its `.sha256` file and
-//! replaces the program; the new version runs from the next start.
+//! system is there, the user is asked (bar in the window). After consent it is
+//! downloaded, checked against its `.sha256` file and replaces the program;
+//! the user can restart right away.
 //!
 //! Local builds (no `FUNKRAUM_BUILD`) never update. `--no-update` or the
 //! environment variable `FUNKRAUM_NO_UPDATE=1` switch updates off.
@@ -30,15 +31,6 @@ const ASSET: Option<&str> = if cfg!(target_os = "windows") {
 	None
 };
 const MAX_SIZE: u64 = 400 * 1024 * 1024;
-
-pub enum Outcome {
-	/// Nothing new (or updates are off).
-	Current,
-	/// The new version is installed and used from the next start.
-	Installed,
-	/// A new version exists but could not be installed; the text says why.
-	Failed(String),
-}
 
 pub fn enabled() -> bool {
 	!BUILD.is_empty()
@@ -69,49 +61,54 @@ struct Asset {
 	browser_download_url: String,
 }
 
-/// Checks once and installs a new version if there is one.
-pub fn check_and_install(data_dir: &Path) -> Outcome {
-	match try_update(data_dir) {
-		Ok(true) => Outcome::Installed,
-		Ok(false) => Outcome::Current,
-		Err(e) => {
-			tracing::warn!(error = %format!("{e:#}"), "Update fehlgeschlagen");
-			Outcome::Failed(format!("{e:#}"))
-		}
-	}
+/// A newer build on GitHub that can be installed.
+#[derive(Clone, Debug)]
+pub struct Pending {
+	pub commit: String,
+	asset_name: &'static str,
+	asset_url: String,
+	asset_size: u64,
+	sum_url: String,
 }
 
-fn try_update(data_dir: &Path) -> Result<bool> {
-	let Some(asset_name) = ASSET else { return Ok(false) };
-	let http = client()?;
-	// The release is recreated on every build and missing for a moment; network
-	// problems are also no reason to bother the user: try again later.
+impl Pending {
+	pub fn short(&self) -> &str { &self.commit[..self.commit.len().min(7)] }
+}
+
+/// Looks for a newer build. `Ok(None)`: up to date, or the new build is still
+/// being made (its files are not uploaded yet).
+pub fn check() -> Result<Option<Pending>> {
+	let Some(asset_name) = ASSET else { return Ok(None) };
 	let api = std::env::var("FUNKRAUM_UPDATE_API").unwrap_or_else(|_| API.to_string());
-	let rel: Release = match http
+	let rel: Release = client()?
 		.get(&api)
 		.header("Accept", "application/vnd.github+json")
 		.send()
 		.and_then(|r| r.error_for_status())
 		.and_then(|r| r.json())
-	{
-		Ok(r) => r,
-		Err(error) => {
-			tracing::debug!(%error, "Update-Prüfung nicht möglich");
-			return Ok(false);
-		}
-	};
+		.context("GitHub nicht erreichbar")?;
 	if rel.target_commitish.is_empty() || rel.target_commitish == BUILD {
-		return Ok(false);
+		return Ok(None);
 	}
-	// While the new build is still running, the files are not there yet.
-	let Some(asset) = rel.assets.iter().find(|a| a.name == asset_name) else { return Ok(false) };
-	let Some(sum) = rel.assets.iter().find(|a| a.name == format!("{asset_name}.sha256")) else { return Ok(false) };
-	if asset.size > MAX_SIZE {
-		bail!("Update-Datei zu groß ({} Bytes)", asset.size);
-	}
-	tracing::info!(neu = %rel.target_commitish, aktuell = BUILD, "Neue Version gefunden, lade herunter");
+	let Some(asset) = rel.assets.iter().find(|a| a.name == asset_name) else { return Ok(None) };
+	let Some(sum) = rel.assets.iter().find(|a| a.name == format!("{asset_name}.sha256")) else { return Ok(None) };
+	tracing::info!(neu = %rel.target_commitish, aktuell = BUILD, "Neue Version verfügbar");
+	Ok(Some(Pending {
+		commit: rel.target_commitish,
+		asset_name,
+		asset_url: asset.browser_download_url.clone(),
+		asset_size: asset.size,
+		sum_url: sum.browser_download_url.clone(),
+	}))
+}
 
-	let expected = http.get(&sum.browser_download_url).send()?.error_for_status()?.text()?;
+/// Downloads, checks and installs a new version (used from the next start).
+pub fn install(p: &Pending, data_dir: &Path) -> Result<()> {
+	if p.asset_size > MAX_SIZE {
+		bail!("Update-Datei zu groß ({} Bytes)", p.asset_size);
+	}
+	let http = client()?;
+	let expected = http.get(&p.sum_url).send()?.error_for_status()?.text()?;
 	let expected = expected.split_whitespace().next().unwrap_or("").to_ascii_lowercase();
 	if expected.len() != 64 {
 		bail!("Prüfsumme der Update-Datei ist ungültig");
@@ -119,22 +116,51 @@ fn try_update(data_dir: &Path) -> Result<bool> {
 	let dir = data_dir.join("update");
 	let _ = std::fs::remove_dir_all(&dir);
 	std::fs::create_dir_all(&dir)?;
-	let file = dir.join(asset_name);
-	let mut body = Vec::with_capacity(asset.size as usize);
-	http.get(&asset.browser_download_url).send()?.error_for_status()?.take(MAX_SIZE).read_to_end(&mut body)?;
+	let file = dir.join(p.asset_name);
+	let mut body = Vec::with_capacity(p.asset_size as usize);
+	http.get(&p.asset_url).send()?.error_for_status()?.take(MAX_SIZE).read_to_end(&mut body).context("Download abgebrochen")?;
 	let actual: String = Sha256::digest(&body).iter().map(|b| format!("{b:02x}")).collect();
 	if actual != expected {
 		bail!("Prüfsumme stimmt nicht (Download beschädigt?)");
 	}
 	std::fs::write(&file, &body)?;
-	install(&file, &dir)?;
+	let res = install_file(&file, &dir);
 	let _ = std::fs::remove_dir_all(&dir);
-	tracing::info!(version = %rel.target_commitish, "Update installiert, gilt ab dem nächsten Start");
-	Ok(true)
+	res?;
+	tracing::info!(version = %p.commit, "Update installiert");
+	Ok(())
+}
+
+/// Starts the (new) program again; the caller then ends this process.
+pub fn restart() -> Result<()> {
+	let exe = std::env::current_exe()?;
+	#[cfg(target_os = "macos")]
+	{
+		if let Some(bundle) = exe.ancestors().find(|p| p.extension().is_some_and(|e| e == "app")) {
+			std::process::Command::new("open").arg("-n").arg(bundle).spawn()?;
+			return Ok(());
+		}
+	}
+	std::process::Command::new(exe).spawn()?;
+	Ok(())
+}
+
+/// Opens the download page in the browser.
+pub fn open_releases() {
+	let url = RELEASES_PAGE;
+	#[cfg(target_os = "windows")]
+	let r = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", url]).spawn();
+	#[cfg(target_os = "macos")]
+	let r = std::process::Command::new("open").arg(url).spawn();
+	#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+	let r = std::process::Command::new("xdg-open").arg(url).spawn();
+	if let Err(error) = r {
+		tracing::warn!(%error, "Browser konnte nicht geöffnet werden");
+	}
 }
 
 #[cfg(not(target_os = "macos"))]
-fn install(file: &Path, _dir: &Path) -> Result<()> {
+fn install_file(file: &Path, _dir: &Path) -> Result<()> {
 	#[cfg(unix)]
 	{
 		use std::os::unix::fs::PermissionsExt;
@@ -145,7 +171,7 @@ fn install(file: &Path, _dir: &Path) -> Result<()> {
 
 /// macOS: the whole app bundle is replaced (its signature covers all files).
 #[cfg(target_os = "macos")]
-fn install(file: &Path, dir: &Path) -> Result<()> {
+fn install_file(file: &Path, dir: &Path) -> Result<()> {
 	use std::path::PathBuf;
 	let exe = std::env::current_exe()?.canonicalize()?;
 	let bundle: PathBuf = exe

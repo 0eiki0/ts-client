@@ -460,3 +460,13 @@ body.mini-body { height: 100%; overflow: hidden; }
   .add-row > select { flex: 1 1 100%; }
 }
 .modal input:disabled, .modal select:disabled, .modal textarea:disabled { opacity: .5; }
+
+/* Desktop app: update bar */
+#update-bar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; width: min(620px, calc(100vw - 24px));
+  background: var(--panel); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 12px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; animation: update-in .25s ease-out; }
+@keyframes update-in { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+#update-bar[hidden] { display: none; }
+#update-bar.error { border-left-color: var(--danger); }
+#update-bar .update-text { flex: 1 1 260px; }
+#update-bar .update-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
