@@ -96,7 +96,7 @@ pub fn router(cfg: Arc<Config>, addr: SocketAddr) -> Router {
 
 async fn api_config() -> impl IntoResponse {
 	axum::Json(serde_json::json!({
-		"title": "TS Client",
+		"title": "Funkraum",
 		"server": "",
 		"allow_any_server": true,
 		"needs_access_password": false,
@@ -118,7 +118,7 @@ fn identity_json(id: &tsclientlib::Identity) -> Response {
 	.into_response()
 }
 
-/// Checks an identity to import (TS3 client export or bare key).
+/// Checks an identity to import (TeamSpeak 3 client export or bare key).
 async fn api_identity(State(state): State<Arc<AppState>>, body: String) -> Response {
 	let bad = |msg: String| (StatusCode::BAD_REQUEST, axum::Json(serde_json::json!({ "error": msg }))).into_response();
 	if body.len() > 16 * 1024 {
@@ -133,7 +133,7 @@ async fn api_identity(State(state): State<Arc<AppState>>, body: String) -> Respo
 	match tokio::task::spawn_blocking(move || tsclientlib::Identity::new_from_str(&key)).await {
 		Ok(Ok(id)) => identity_json(&id),
 		Ok(Err(error)) => bad(format!(
-			"Das ist keine gültige TeamSpeak-Identität ({error}). Exportiere sie im TS3-Client unter \
+			"Das ist keine gültige TeamSpeak-Identität ({error}). Exportiere sie im TeamSpeak-3-Client unter \
 			 Extras → Identitäten → Exportieren und füge den Inhalt der Datei ein."
 		)),
 		Err(error) => bad(error.to_string()),

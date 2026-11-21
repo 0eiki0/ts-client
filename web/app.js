@@ -1,5 +1,5 @@
 'use strict';
-/* TS3 Web – browser client for the TS3 web bridge. */
+/* Funkraum – browser client for the TeamSpeak 3 web bridge. */
 
 // ---------------------------------------------------------------- helpers
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -127,7 +127,7 @@ const S = {
 };
 
 // ---------------------------------------------------------------- sounds
-// Notification sounds like in the TS3 client: spoken announcements (speech
+// Notification sounds like in the TeamSpeak 3 client: spoken announcements (speech
 // synthesis of the browser/OS, German voice), simple tones, or own sound files
 // per event (stored in this browser, IndexedDB).
 const SOUND_EVENTS = [
@@ -192,7 +192,7 @@ function germanVoice() {
   if (!('speechSynthesis' in window)) return null;
   const voices = speechSynthesis.getVoices().filter((v) => /^de(-|_|$)/i.test(v.lang));
   if (!voices.length) return null;
-  // Prefer female voices (like the TS3 default pack) and local ones (no delay).
+  // Prefer female voices (like the TeamSpeak 3 default pack) and local ones (no delay).
   const score = (v) => (/(female|frau|anna|katja|hedda|petra|marlene|vicki|helena|google deutsch)/i.test(v.name) ? 2 : 0) + (v.localService ? 1 : 0);
   return voices.sort((a, b) => score(b) - score(a))[0];
 }
@@ -314,11 +314,11 @@ async function init() {
   try {
     S.config = await (await fetch('api/config')).json();
   } catch {
-    S.config = { title: 'TS3 Web', server: '', allow_any_server: true, needs_access_password: false };
+    S.config = { title: 'Funkraum', server: '', allow_any_server: true, needs_access_password: false };
   }
   document.title = S.config.title;
   $('#app-title').textContent = S.config.title;
-  $('#login-server-label').textContent = S.config.allow_any_server ? 'TeamSpeak 3 im Browser' : `Server: ${S.config.server}`;
+  $('#login-server-label').textContent = S.config.allow_any_server ? 'Sprachchat im Browser' : `Server: ${S.config.server}`;
   $('#row-address').hidden = !S.config.allow_any_server;
   $('#row-access').hidden = !S.config.needs_access_password;
   if (!window.isSecureContext) $('#insecure-warning').hidden = false;
@@ -348,7 +348,7 @@ function serverKey() {
   return (S.config.allow_any_server ? ($('#f-address').value.trim() || S.config.server) : S.config.server) || 'default';
 }
 // ---------------------------------------------------------------- identities
-// Several identities can be stored in this browser (like in the TS3 client).
+// Several identities can be stored in this browser (like in the TeamSpeak 3 client).
 // store 'ids': [{ id, name, identity, uid, level }]
 // store 'idActive': { <serverKey>: id, _default: id } – which one is used where.
 function idList() { return store.get('ids', []); }
@@ -443,7 +443,7 @@ async function identityApi(path, body) {
   return data;
 }
 
-/** Name from a TS3 client export (`id=…` in the .ini). */
+/** Name from a TeamSpeak 3 client export (`id=…` in the .ini). */
 function nameFromIni(text) {
   const m = text.match(/^\s*id\s*=\s*"?([^"\r\n]+)"?\s*$/mi);
   return m ? m[1].trim() : '';
@@ -973,7 +973,7 @@ function leaveApp(error) {
 
 function disconnect() {
   S.userDisconnect = true;
-  send({ t: 'disconnect', message: 'TS3 Web' });
+  send({ t: 'disconnect', message: 'Funkraum' });
   setTimeout(() => { if (S.ws) S.ws.close(); leaveApp(''); }, 400);
 }
 
@@ -992,7 +992,7 @@ function onState(m) {
     S.outputMuted = me.output_muted;
     S.away = me.away != null;
   }
-  $('#server-name').textContent = m.server.name || 'TeamSpeak';
+  $('#server-name').textContent = m.server.name || 'Server';
   const stats = [];
   if (m.ping_ms != null) stats.push(`${Math.round(m.ping_ms)} ms`);
   if (m.packet_loss != null && m.packet_loss > 0.005) stats.push(`${(m.packet_loss * 100).toFixed(1)} % Verlust`);
@@ -1034,7 +1034,7 @@ function onState(m) {
   updateTxState();
 }
 
-/** Sounds for channel changes (like the TS3 client): compare with the last state. */
+/** Sounds for channel changes (like the TeamSpeak 3 client): compare with the last state. */
 function channelSounds(prev, prevOwnCh) {
   const ownCh = S.clients.get(S.ownId)?.channel;
   if (ownCh == null) return;
@@ -1816,7 +1816,7 @@ function updateMobileBadge() {
 // ---------------------------------------------------------------- chat history
 // Server, channel and private chats stay after reconnecting: at most 500 messages
 // per chat, no time limit. The browser derives an id, a token and a key from the
-// TS identity (HKDF, per server), compresses and encrypts the history; the bridge
+// TeamSpeak identity (HKDF, per server), compresses and encrypts the history; the bridge
 // only stores the encrypted data and cannot read it. Chats of channels that no
 // longer exist are deleted.
 const HIST_MAX = 500;
@@ -2535,7 +2535,7 @@ function bindHotkeys(win) {
   win.addEventListener('auxclick', (e) => { if (e.button >= 1 && boundMouse(e.button)) e.preventDefault(); });
 }
 bindHotkeys(window);
-// Desktop app (ts-client): keys and mouse buttons pressed while the window is in
+// Desktop app (funkraum): keys and mouse buttons pressed while the window is in
 // the background arrive here, so push-to-talk and the other shortcuts work globally.
 window.tsGlobalInput = (ev) => {
   if (document.hasFocus()) return; // the page gets its own events then
@@ -2568,7 +2568,7 @@ async function openMini() {
   } catch (e) { console.warn('Mini-Fenster', e); }
   if (!w) { toast('Das kleine Fenster wurde vom Browser blockiert. Bitte Pop-ups für diese Seite erlauben.', 'error'); return; }
   const d = w.document;
-  d.title = (S.server && S.server.name) || 'TS3 Web';
+  d.title = (S.server && S.server.name) || 'Funkraum';
   if (!d.head.querySelector('link[rel=stylesheet]')) {
     const css = d.createElement('link');
     css.rel = 'stylesheet';

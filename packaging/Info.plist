@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>TS Client</string>
+	<string>Funkraum</string>
 	<key>CFBundleDisplayName</key>
-	<string>TS Client</string>
+	<string>Funkraum</string>
 	<key>CFBundleIdentifier</key>
-	<string>io.github.0eiki0.ts-client</string>
+	<string>io.github.0eiki0.funkraum</string>
 	<key>CFBundleExecutable</key>
-	<string>ts-client</string>
+	<string>funkraum</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleVersion</key>
@@ -21,6 +21,6 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Der TS Client braucht das Mikrofon, damit du im TeamSpeak sprechen kannst.</string>
+	<string>Funkraum braucht das Mikrofon, damit du im Sprachchat sprechen kannst.</string>
 </dict>
 </plist>

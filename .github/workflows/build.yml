@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp target/release/ts-client.exe dist/TS-Client-Windows.exe
+          cp target/release/funkraum.exe dist/Funkraum-Windows.exe
       - name: Upload to the release
         if: github.event_name == 'push'
         shell: bash
@@ -85,13 +85,13 @@ jobs:
       - name: Package (.app)
         run: |
           version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-          app="dist/TS Client.app"
+          app="dist/Funkraum.app"
           mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-          lipo -create -output "$app/Contents/MacOS/ts-client" \
-            target/aarch64-apple-darwin/release/ts-client target/x86_64-apple-darwin/release/ts-client
+          lipo -create -output "$app/Contents/MacOS/funkraum" \
+            target/aarch64-apple-darwin/release/funkraum target/x86_64-apple-darwin/release/funkraum
           sed "s/VERSION/$version/g" packaging/Info.plist > "$app/Contents/Info.plist"
           codesign --force --deep --sign - "$app"
-          cd dist && ditto -c -k --keepParent "TS Client.app" TS-Client-macOS.zip && rm -rf "TS Client.app"
+          cd dist && ditto -c -k --keepParent "Funkraum.app" Funkraum-macOS.zip && rm -rf "Funkraum.app"
       - name: Upload to the release
         if: github.event_name == 'push'
         env:
@@ -120,8 +120,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp target/release/ts-client dist/TS-Client-Linux-x86_64
-          chmod +x dist/TS-Client-Linux-x86_64
+          cp target/release/funkraum dist/Funkraum-Linux-x86_64
+          chmod +x dist/Funkraum-Linux-x86_64
       - name: Upload to the release
         if: github.event_name == 'push'
         env:

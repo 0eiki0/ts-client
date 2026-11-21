@@ -1,5 +1,5 @@
 'use strict';
-/* TS3 Web – management dialogs: server settings, full channel editor, server and
+/* Funkraum – management dialogs: server settings, full channel editor, server and
  * channel groups, permission editor, bans, privilege keys, complaints and
  * temporary server passwords.
  *

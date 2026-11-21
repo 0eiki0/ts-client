@@ -1,6 +1,6 @@
-//! ts-client: TeamSpeak client for Windows, macOS and Linux.
+//! funkraum: TeamSpeak client for Windows, macOS and Linux.
 //!
-//! The program contains the TS3 web bridge: a local web server on 127.0.0.1
+//! The program contains Funkraum Web (the web bridge): a local web server on 127.0.0.1
 //! connects to the TeamSpeak server (tsclientlib) and serves its user interface,
 //! which is shown in an app window (system web view). Global push-to-talk reads
 //! the keyboard and mouse also while the window is in the background.
@@ -45,7 +45,7 @@ enum UserEvent {
 }
 
 fn data_dir() -> PathBuf {
-	dirs::data_local_dir().unwrap_or_else(std::env::temp_dir).join("ts-client")
+	dirs::data_local_dir().unwrap_or_else(std::env::temp_dir).join("funkraum")
 }
 
 fn init_logging(dir: &std::path::Path) {
@@ -53,7 +53,7 @@ fn init_logging(dir: &std::path::Path) {
 	let verbose = std::env::args().any(|a| a == "-v" || a == "--verbose");
 	let filter = if verbose { "debug,tsproto=info,tsclientlib=info,hyper=info" } else { "info,tsproto=warn,tsclientlib=warn" };
 	let env_filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(filter));
-	let file = std::fs::File::create(dir.join("ts-client.log")).ok();
+	let file = std::fs::File::create(dir.join("funkraum.log")).ok();
 	let fmt = tracing_subscriber::fmt::layer().with_ansi(false);
 	let registry = tracing_subscriber::registry().with(capture::CaptureLayer.with_filter(tracing_subscriber::filter::filter_fn(|m| {
 		m.target() == capture::TARGET
@@ -68,7 +68,7 @@ fn main() -> Result<()> {
 	let data = data_dir();
 	let _ = std::fs::create_dir_all(&data);
 	init_logging(&data);
-	tracing::info!(version = env!("CARGO_PKG_VERSION"), data = %data.display(), "TS Client startet");
+	tracing::info!(version = env!("CARGO_PKG_VERSION"), data = %data.display(), "Funkraum startet");
 
 	let cfg = Arc::new(Config { ts_server: String::new(), allow_any_server: true, verbose: 0 });
 	let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().context("tokio")?;
@@ -85,14 +85,14 @@ fn main() -> Result<()> {
 		}
 		Err(e) => {
 			// Probably the app is already open: show its interface again.
-			tracing::warn!(error = %e, "Port {PORT} belegt – läuft der TS Client schon?");
+			tracing::warn!(error = %e, "Port {PORT} belegt – läuft Funkraum schon?");
 			format!("http://127.0.0.1:{PORT}/")
 		}
 	};
 
 	let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
 	let window = WindowBuilder::new()
-		.with_title("TS Client")
+		.with_title("Funkraum")
 		.with_inner_size(LogicalSize::new(1180.0, 780.0))
 		.with_min_inner_size(LogicalSize::new(360.0, 480.0))
 		.build(&event_loop)

@@ -1,4 +1,4 @@
-// Audio worklets for the TS3 web bridge.
+// Audio worklets for the TeamSpeak 3 web bridge.
 // The bridge always speaks 48 kHz mono in 20 ms frames (960 samples).
 
 const BRIDGE_RATE = 48000;

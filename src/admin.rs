@@ -25,7 +25,7 @@ impl SessionHandle {
 	pub fn update(&self, f: impl FnOnce(&mut SessionInfo)) { f(&mut SessionInfo::default()) }
 	pub fn check(&self, _uid: Option<&str>, _nickname: Option<&str>) -> Option<String> { None }
 	pub fn log(&self, _kind: &'static str, _nickname: Option<&str>, _uid: Option<&str>, _text: String) {}
-	/// A signed TS3 client version of this operating system, so servers see a
+	/// A signed TeamSpeak 3 client version of this operating system, so servers see a
 	/// normal client of the platform.
 	pub fn client_version(&self) -> Option<&'static crate::versions::Signed> {
 		let platform = if cfg!(target_os = "windows") {
