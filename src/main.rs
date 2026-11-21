@@ -16,6 +16,7 @@ mod protocol;
 mod query;
 mod resolve;
 mod session;
+mod updater;
 mod versions;
 mod web;
 
@@ -43,6 +44,8 @@ const PORT: u16 = 47213;
 
 enum UserEvent {
 	Input(String),
+	/// A message shown in the window (via the page's `toast`).
+	Toast(String, &'static str),
 }
 
 fn data_dir() -> PathBuf {
@@ -69,7 +72,24 @@ fn main() -> Result<()> {
 	let data = data_dir();
 	let _ = std::fs::create_dir_all(&data);
 	init_logging(&data);
-	tracing::info!(version = env!("CARGO_PKG_VERSION"), data = %data.display(), "Funkraum startet");
+	tracing::info!(version = env!("CARGO_PKG_VERSION"), build = updater::build(), data = %data.display(), "Funkraum startet");
+
+	// `funkraum --update`: check once, install, exit (also used for testing).
+	if std::env::args().any(|a| a == "--update") {
+		if !updater::enabled() {
+			println!("Updates sind für diesen Build ausgeschaltet (lokal gebaut oder --no-update).");
+			return Ok(());
+		}
+		match updater::check_and_install(&data) {
+			updater::Outcome::Current => println!("Funkraum ist aktuell (Build {}).", updater::build()),
+			updater::Outcome::Installed => println!("Neue Version installiert – sie startet beim nächsten Öffnen."),
+			updater::Outcome::Failed(e) => {
+				println!("Update fehlgeschlagen: {e}");
+				std::process::exit(1);
+			}
+		}
+		return Ok(());
+	}
 
 	let cfg = Arc::new(Config { ts_server: String::new(), allow_any_server: true, verbose: 0 });
 	let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().context("tokio")?;
@@ -131,6 +151,35 @@ fn main() -> Result<()> {
 		})
 	})?;
 
+	// Automatic updates: shortly after the start, then every 6 hours.
+	if updater::enabled() {
+		let proxy = event_loop.create_proxy();
+		let dir = data.clone();
+		std::thread::Builder::new().name("updater".into()).spawn(move || {
+			std::thread::sleep(Duration::from_secs(20));
+			loop {
+				match updater::check_and_install(&dir) {
+					updater::Outcome::Installed => {
+						let _ = proxy.send_event(UserEvent::Toast(
+							"Eine neue Version von Funkraum wurde installiert. Sie startet beim nächsten Öffnen.".into(),
+							"",
+						));
+						break;
+					}
+					updater::Outcome::Failed(reason) => {
+						let _ = proxy.send_event(UserEvent::Toast(
+							format!("Neue Version verfügbar, automatisch installieren ging nicht ({reason}). Download: {}", updater::RELEASES_PAGE),
+							"error",
+						));
+						break;
+					}
+					updater::Outcome::Current => {}
+				}
+				std::thread::sleep(Duration::from_secs(6 * 3600));
+			}
+		})?;
+	}
+
 	let mut webview = Some(webview);
 	let mut focused = true;
 	event_loop.run(move |event, _, control_flow| {
@@ -144,6 +193,11 @@ fn main() -> Result<()> {
 				webview.take();
 				std::thread::sleep(Duration::from_millis(600));
 				*control_flow = ControlFlow::Exit;
+			}
+			Event::UserEvent(UserEvent::Toast(text, kind)) => {
+				if let (Some(w), Ok(t)) = (&webview, serde_json::to_string(&text)) {
+					let _ = w.evaluate_script(&format!("typeof toast === 'function' && toast({t}, '{kind}')"));
+				}
 			}
 			Event::UserEvent(UserEvent::Input(json)) => {
 				if !focused {

@@ -16,6 +16,14 @@ Unter **[Releases](https://github.com/0eiki0/ts-client/releases)** (Release „l
 | macOS 11+ (Intel und Apple Silicon) | `Funkraum-macOS.zip` – entpacken, `Funkraum.app` in „Programme“ ziehen |
 | Linux (x86_64) | `Funkraum-Linux-x86_64` – `chmod +x` und starten |
 
+### Automatische Updates
+
+Funkraum sucht beim Start und danach alle 6 Stunden nach einer neuen Version im Release „latest“. Gibt es eine, lädt Funkraum sie herunter, prüft sie mit der Prüfsumme (`.sha256`) und ersetzt sich selbst. Die neue Version läuft ab dem nächsten Start, ein Hinweis im Fenster sagt Bescheid.
+
+- Von Hand prüfen: `funkraum --update` (Windows: `Funkraum-Windows.exe --update`)
+- Ausschalten: mit `--no-update` starten oder die Umgebungsvariable `FUNKRAUM_NO_UPDATE=1` setzen
+- Liegt das Programm in einem Ordner ohne Schreibrechte (z. B. `/usr/local/bin`), meldet Funkraum die neue Version nur und du lädst sie selbst herunter.
+
 ### Beim ersten Start
 
 Das Programm ist nicht mit einem gekauften Zertifikat signiert, deshalb warnen Windows und macOS beim ersten Start:
@@ -73,6 +81,8 @@ GitHub Actions baut bei jedem Push auf `main` alle drei Systeme und veröffentli
 | Datei | Inhalt |
 |---|---|
 | `src/main.rs` | Start, Fenster (tao/wry), Mikrofon-Freigabe, Weitergabe der globalen Tasten |
+| `src/updater.rs` | Automatische Updates aus dem GitHub-Release „latest“ |
+| `src/notify.rs` | Desktop-Benachrichtigungen (an das System weitergeleitet) |
 | `src/hotkeys.rs` | Globales Push-to-Talk: Tastatur und Maus des Systems abfragen |
 | `src/web.rs` | Lokaler Server: Oberfläche, Identitäten, WebSocket; Schutz gegen fremde Zugriffe |
 | `src/session.rs`, `src/protocol.rs`, `src/capture.rs`, `src/resolve.rs`, `src/versions.rs` | Aus Funkraum Web: TeamSpeak-Verbindung, Audio, Befehle |

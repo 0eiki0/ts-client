@@ -8,6 +8,9 @@ use std::path::PathBuf;
 
 fn main() {
 	println!("cargo:rerun-if-changed=build.rs");
+	// Commit of this build (set by the build workflow), used by the updater.
+	println!("cargo:rerun-if-env-changed=FUNKRAUM_BUILD");
+	println!("cargo:rustc-env=FUNKRAUM_BUILD={}", std::env::var("FUNKRAUM_BUILD").unwrap_or_default());
 	if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("musl") {
 		return;
 	}

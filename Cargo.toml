@@ -26,6 +26,9 @@ tao = "0.37.3"
 dirs = "7.0.0"
 device_query = "4.0.1"
 notify-rust = "4.19.0"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls-webpki-roots"] }
+self-replace = "1.5.1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [profile.release]
 opt-level = 3
