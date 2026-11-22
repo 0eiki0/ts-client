@@ -25,9 +25,6 @@ use crate::session::{self, FromSession, ToSession};
 const INDEX_HTML: &str = include_str!("../web/index.html");
 const APP_JS: &str = include_str!("../web/app.js");
 const DESKTOP_JS: &str = include_str!("../web/desktop.js");
-const SHARE_JS: &str = include_str!("../web/share.js");
-const SHARE_TICK_JS: &str = include_str!("../web/share-tick.js");
-const SHARE_AUDIO_JS: &str = include_str!("../web/share-audio.js");
 const MANAGE_JS: &str = include_str!("../web/manage.js");
 const STYLE_CSS: &str = include_str!("../web/style.css");
 const WORKLET_JS: &str = include_str!("../web/audio-worklet.js");
@@ -83,9 +80,6 @@ pub fn router(cfg: Arc<Config>, addr: SocketAddr) -> Router {
 		.route("/", get(|| async { asset("text/html; charset=utf-8", INDEX_HTML.as_bytes()) }))
 		.route("/app.js", get(|| async { asset("text/javascript; charset=utf-8", APP_JS.as_bytes()) }))
 		.route("/desktop.js", get(|| async { asset("text/javascript; charset=utf-8", DESKTOP_JS.as_bytes()) }))
-		.route("/share.js", get(|| async { asset("text/javascript; charset=utf-8", SHARE_JS.as_bytes()) }))
-		.route("/share-tick.js", get(|| async { asset("text/javascript; charset=utf-8", SHARE_TICK_JS.as_bytes()) }))
-		.route("/share-audio.js", get(|| async { asset("text/javascript; charset=utf-8", SHARE_AUDIO_JS.as_bytes()) }))
 		.route("/manage.js", get(|| async { asset("text/javascript; charset=utf-8", MANAGE_JS.as_bytes()) }))
 		.route("/style.css", get(|| async { asset("text/css; charset=utf-8", STYLE_CSS.as_bytes()) }))
 		.route("/audio-worklet.js", get(|| async { asset("text/javascript; charset=utf-8", WORKLET_JS.as_bytes()) }))
@@ -113,20 +107,8 @@ async fn api_config() -> impl IntoResponse {
 		"sync": false,
 		"history": false,
 		"desktop": true,
-		// Bridge for screen sharing unless the user chose one (settings).
-		"share_server": share_server(),
 		"version": env!("CARGO_PKG_VERSION"),
 	}))
-}
-
-/// Default bridge for screen sharing, set when building (`FUNKRAUM_SHARE_SERVER`,
-/// e.g. "ts.example.com"); overridden by `FUNKRAUM_SHARE_SERVER` at run time.
-fn share_server() -> Option<String> {
-	std::env::var("FUNKRAUM_SHARE_SERVER")
-		.ok()
-		.or_else(|| option_env!("FUNKRAUM_SHARE_SERVER").map(str::to_string))
-		.map(|s| s.trim().to_string())
-		.filter(|s| !s.is_empty())
 }
 
 fn identity_json(id: &tsclientlib::Identity) -> Response {

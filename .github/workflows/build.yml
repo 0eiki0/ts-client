@@ -13,8 +13,6 @@ permissions:
 # Commit of the build: the app compares it with the release "latest" (auto-update).
 env:
   FUNKRAUM_BUILD: ${{ github.sha }}
-  # Optional default bridge for screen sharing (repository variable, e.g. "ts.example.com").
-  FUNKRAUM_SHARE_SERVER: ${{ vars.FUNKRAUM_SHARE_SERVER }}
 
 jobs:
   # Creates the release first; the build jobs upload their files into it.

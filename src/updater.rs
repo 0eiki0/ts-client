@@ -146,17 +146,8 @@ pub fn restart() -> Result<()> {
 }
 
 /// Opens the download page in the browser.
-pub fn open_releases() { open_url(RELEASES_PAGE) }
-
-/// Open a web address in the system browser (http/https only, no other programs).
-pub fn open_url(url: &str) {
-	let ok = (url.starts_with("https://") || url.starts_with("http://"))
-		&& url.len() < 4096
-		&& !url.chars().any(|c| c.is_control() || c.is_whitespace() || c == '"');
-	if !ok {
-		tracing::warn!(%url, "Ungültige Adresse nicht geöffnet");
-		return;
-	}
+pub fn open_releases() {
+	let url = RELEASES_PAGE;
 	#[cfg(target_os = "windows")]
 	let r = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", url]).spawn();
 	#[cfg(target_os = "macos")]

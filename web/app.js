@@ -948,7 +948,6 @@ function enterApp() {
 
 function leaveApp(error) {
   historyStop();
-  shareStop();
   admReset();
   stopTransmit();
   S.miniLast = null;
@@ -1027,7 +1026,6 @@ function onState(m) {
     }
   }
   historyOnState();
-  shareSync();
   const ch = me && S.channels.get(me.channel);
   if (S.tabs.has('channel')) S.tabs.get('channel').title = ch ? ch.name : 'Kanal';
   renderTree();
@@ -1160,13 +1158,6 @@ function renderClient(c) {
   if (c.is_channel_commander) extra.append(el('span', { class: 'tag', title: 'Channel Commander' }, 'CC'));
   if (c.is_priority_speaker) extra.append(el('span', { class: 'tag', title: 'Priority Speaker' }, 'PS'));
   if (c.is_recording) extra.append(el('span', { class: 'tag', title: 'Nimmt auf' }, '● REC'));
-  const screen = me ? (SH.sending ? { id: 0, audio: SH.sending.audio } : null) : shareOf(c.id);
-  if (screen) {
-    const watching = SH.session && SH.session.viewers.has(screen.id);
-    const tag = el('span', { class: 'tag screen-tag' + (watching ? ' on' : ''), title: me ? 'Du teilst deinen Bildschirm' : `Teilt den Bildschirm${screen.audio ? ' (mit Ton)' : ''} – klicken zum Ansehen`, html: FunkShare.ICON.screen });
-    if (!me) tag.addEventListener('click', (e) => { e.stopPropagation(); if (watching) SH.session.unwatch(screen.id); else shareWatch(screen.id); renderTree(); });
-    extra.append(tag);
-  }
   if (c.talk_request != null) extra.append(el('span', { class: 'tag', title: c.talk_request || 'Sprecherlaubnis angefragt' }, '✋'));
   for (const g of c.server_groups.slice(0, 2)) if (!/^guest$|^gast$/i.test(g)) extra.append(el('span', { class: 'tag' }, g));
   if (c.country) extra.append(el('span', { class: 'tag', title: c.country }, c.country));
@@ -1463,11 +1454,6 @@ function clientMenu(c, ev) {
     items.push({ label: 'Info', action: () => showClientInfo(c.id) });
     items.push(...clientAdminItems(c));
   } else {
-    const screen = shareOf(c.id);
-    if (screen) {
-      const watching = SH.session && SH.session.viewers.has(screen.id);
-      items.push({ label: watching ? 'Bildschirm schließen' : 'Bildschirm ansehen', action: () => (watching ? SH.session.unwatch(screen.id) : shareWatch(screen.id)) }, '-');
-    }
     items.push({ label: 'Private Nachricht', action: () => openPrivate(c.id) });
     items.push({ label: 'Anstupsen (Poke)', action: () => promptDialog(`${c.name} anstupsen`, '', { label: 'Nachricht' }).then((t) => t != null && send({ t: 'poke', client: c.id, text: t })) });
     items.push({ label: 'Info', action: () => showClientInfo(c.id) });
@@ -2878,266 +2864,12 @@ async function openSettings() {
   theme.value = settings.theme;
   theme.addEventListener('change', () => { settings.theme = theme.value; saveSettings(); applyTheme(); });
   check('#s-show-query', 'showQuery', () => { if (S.status === 'connected') renderTree(); });
-  const shareRow = q('#s-share-row');
-  if (shareRow) {
-    shareRow.hidden = !(S.config && S.config.desktop);
-    const inp = q('#s-share-server');
-    inp.value = settings.shareServer || '';
-    inp.placeholder = (S.config && S.config.share_server) || 'ts.example.com';
-    const info = q('#s-share-info');
-    const show = () => { const s = FunkShare.server(inp.value || (S.config && S.config.share_server) || ''); info.textContent = s ? `Bildschirme laufen über ${s.host}.` : 'Noch keine Brücke eingetragen – Bildschirm teilen und ansehen geht erst danach.'; };
-    show();
-    inp.addEventListener('change', () => {
-      const v = inp.value.trim();
-      if (v && !FunkShare.server(v)) { toast('Das ist keine gültige Adresse.', 'error'); return; }
-      settings.shareServer = v;
-      saveSettings();
-      show();
-      if (S.status === 'connected') { shareStop(); shareSync(); }
-    });
-  }
 
   // identity
   const idNow = (S.status === 'connected' && S.identity) || activeIdentity();
   q('#s-id-name').textContent = idNow ? idNow.name : 'keine';
   q('#s-uid').textContent = idNow ? idNow.uid : '–';
   q('#s-id-manage').addEventListener('click', () => identityManager());
-}
-
-// ---------------------------------------------------------------- screen sharing
-// The picture does not go through the TeamSpeak server (it cannot carry video)
-// but through a Funkraum-Web bridge (share.js, /share/ws). Everybody in the same
-// TeamSpeak channel meets in one room: unique id of the server + channel id.
-const SH = { session: null, streams: [], sending: null, cids: '' };
-
-/** The bridge for screen sharing: this bridge, or in the desktop app the one from the settings. */
-function shareServer() {
-  if (!window.FunkShare || !S.config) return null;
-  if (S.config.desktop) return FunkShare.server(settings.shareServer || S.config.share_server || '');
-  return S.config.share ? FunkShare.here() : null;
-}
-
-function shareRoom() {
-  const me = S.clients.get(S.ownId);
-  if (!S.server || !S.server.uid || !me) return null;
-  return `${S.server.uid}/${me.channel}`;
-}
-
-/** Join, follow or leave the room of the own channel (after every state update). */
-function shareSync() {
-  const srv = S.status === 'connected' ? shareServer() : null;
-  const room = srv && shareRoom();
-  const me = S.clients.get(S.ownId);
-  if (!room || !me) {
-    if (SH.session) {
-      SH.session.close();
-      SH.session = null;
-      SH.streams = [];
-      SH.sending = null;
-      renderShare();
-      renderScreens();
-    }
-    updateShareButton();
-    return;
-  }
-  const info = { room, url: srv.ws, name: me.name, cid: me.id, uid: me.uid || null };
-  if (!SH.session) {
-    SH.session = new FunkShare.Session(Object.assign({
-      audioOut: () => (S.ctx && (S.outGain || S.outBus) ? { ctx: S.ctx, node: S.outGain || S.outBus } : null),
-      audioMuted: () => S.outputMuted,
-    }, info));
-    SH.session.on('streams', (list) => {
-      SH.streams = list;
-      renderShare();
-      const cids = list.map((s) => s.cid).sort().join(',');
-      if (cids !== SH.cids) { SH.cids = cids; renderTree(); }
-    });
-    SH.session.on('sending', (s) => {
-      const changed = !SH.sending !== !s;
-      SH.sending = s;
-      renderShare();
-      updateShareButton();
-      if (changed) renderTree();
-    });
-    SH.session.on('watching', () => { renderScreens(); renderTree(); });
-    SH.session.on('error', (text) => toast(text, 'error'));
-    SH.session.on('status', (st) => { if (st === 'open' || st === 'reconnecting') renderShare(); });
-    SH.session.connect();
-  } else if (SH.session.update(info) && SH.sending) {
-    toast('Deine Bildschirmübertragung läuft jetzt in deinem neuen Kanal weiter.');
-  }
-  updateShareButton();
-}
-
-function shareStop() {
-  if (SH.session) SH.session.close();
-  SH.session = null;
-  SH.streams = [];
-  SH.sending = null;
-  SH.cids = '';
-  renderShare();
-  renderScreens();
-  updateShareButton();
-}
-
-/** The stream a client of the tree is sharing (same TeamSpeak server, so the client id matches). */
-function shareOf(clientId) { return SH.streams.find((s) => s.cid === clientId) || null; }
-
-function updateShareButton() {
-  const b = $('#btn-share');
-  if (!b) return;
-  const on = !!SH.sending;
-  b.innerHTML = on ? FunkShare.ICON.screenOff : FunkShare.ICON.screen;
-  b.classList.toggle('on', on);
-  b.title = on ? 'Bildschirmübertragung beenden' : 'Bildschirm teilen';
-  b.hidden = !window.FunkShare || !(S.config && (S.config.share || S.config.desktop))
-    || (!FunkShare.support().send && !S.config.desktop); // phones: watching only
-}
-
-/** Bar above the chat: own share and the screens of the others in the channel. */
-function renderShare() {
-  const bar = $('#screen-bar');
-  if (!bar) return;
-  bar.textContent = '';
-  const ses = SH.session;
-  if (SH.sending && ses) {
-    const s = SH.sending;
-    const parts = [s.viewers === 1 ? '1 Zuschauer' : `${s.viewers} Zuschauer`];
-    if (ses.state === 'reconnecting') parts.push('verbinde neu…');
-    const chip = el('div', { class: 'screen-chip own' },
-      el('span', { class: 'ico', html: FunkShare.ICON.screen }),
-      el('span', {}, el('strong', {}, 'Du teilst deinen Bildschirm'), ' · ', parts.join(' · ')));
-    const audioBtn = el('button', { type: 'button', class: 'small' + (s.audio ? ' on' : ''), title: s.audio ? 'Ton ausschalten' : s.hasAudio ? 'Ton einschalten' : 'Ton hinzufügen, ohne die Übertragung neu zu starten' }, s.audio ? 'Ton an' : s.hasAudio ? 'Ton aus' : 'Ton hinzufügen…');
-    audioBtn.addEventListener('click', () => {
-      if (s.audio) ses.setAudio(false);
-      else if (!ses.setAudio(true)) shareAddAudio();
-    });
-    const linkBtn = el('button', { type: 'button', class: 'small', title: 'Link für Leute ohne Funkraum, z. B. mit dem TeamSpeak-Programm: Sie schauen im Browser zu' }, 'Link kopieren');
-    linkBtn.addEventListener('click', () => shareCopyLink());
-    const stopBtn = el('button', { type: 'button', class: 'small danger' }, 'Beenden');
-    stopBtn.addEventListener('click', () => ses.stopSharing());
-    chip.append(audioBtn, linkBtn, stopBtn);
-    bar.append(chip);
-  }
-  for (const st of SH.streams) {
-    if (ses && ses.viewers.has(st.id)) continue;
-    const btn = el('button', { type: 'button', class: 'small primary' }, 'Ansehen');
-    btn.addEventListener('click', () => shareWatch(st.id));
-    bar.append(el('div', { class: 'screen-chip' },
-      el('span', { class: 'ico', html: FunkShare.ICON.screen }),
-      el('span', {}, el('strong', {}, st.name), ' teilt den Bildschirm', st.audio ? ' (mit Ton)' : ''),
-      btn));
-  }
-  bar.hidden = !bar.childNodes.length;
-}
-
-function renderScreens() {
-  const box = $('#screens');
-  if (!box) return;
-  const tiles = SH.session ? [...SH.session.viewers.values()].map((v) => v.el) : [];
-  box.replaceChildren(...tiles);
-  box.hidden = !tiles.length;
-  box.dataset.count = String(tiles.length);
-  renderShare();
-}
-
-function shareWatch(id) {
-  if (!SH.session) return;
-  const srv = shareServer();
-  if (!FunkShare.support().view) {
-    const room = shareRoom();
-    if (srv && room) {
-      confirmDialog('Diese Ansicht kann das Bild nicht anzeigen (WebCodecs fehlt). Du kannst im Browser zuschauen.', { title: 'Bildschirm ansehen', okLabel: 'Im Browser öffnen', icon: 'question' })
-        .then((ok) => ok && FunkShare.openExternal(FunkShare.link(srv, room)));
-    } else toast('Dein Browser kann das Bild nicht anzeigen. Probiere Chrome, Edge, Firefox oder Safari.', 'error');
-    return;
-  }
-  SH.session.watch(id);
-  if (window.matchMedia && matchMedia('(max-width: 760px)').matches) showPane('chat');
-}
-
-function shareCopyLink() {
-  const srv = shareServer();
-  const room = shareRoom();
-  if (!srv || !room) return;
-  const url = FunkShare.link(srv, room);
-  const done = () => toast('Link kopiert. Wer ihn öffnet, sieht die Bildschirme in deinem Kanal – gib ihn nur an Leute weiter, die zuschauen dürfen.');
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => promptDialog('Link zum Zuschauen', url, { label: 'Link kopieren:' }));
-  else promptDialog('Link zum Zuschauen', url, { label: 'Link kopieren:' });
-}
-
-/** Add sound to the running share (system/tab sound or an audio device), without restarting it. */
-async function shareAddAudio() {
-  if (!SH.session || !SH.sending) return;
-  const form = FunkShare.audioForm();
-  const go = await new Promise((resolve) => {
-    modalResolve = resolve;
-    const ok = el('button', { class: 'primary', onclick: () => { modalResolve = null; closeModal(); resolve(true); } }, 'Ton hinzufügen');
-    openModal('Ton hinzufügen', form.node, [el('button', { onclick: () => closeModal(false) }, 'Abbrechen'), ok]);
-  });
-  const src = go && form.values();
-  if (!src || !SH.session || !SH.sending) return;
-  try {
-    await SH.session.addAudio(src);
-    toast('Der Ton wird jetzt mit übertragen.');
-  } catch (e) {
-    const msg = e && e.message ? e.message : String(e);
-    if (!/abgebrochen/.test(msg)) toast(msg, 'error');
-  }
-}
-
-async function shareDialog() {
-  if (SH.sending && SH.session) { SH.session.stopSharing(); return; }
-  if (!window.FunkShare) return;
-  const srv = shareServer();
-  if (!srv) {
-    if (S.config && S.config.desktop) {
-      toast('Trage zuerst unter Einstellungen → „Bildschirm teilen“ die Adresse einer Funkraum-Web-Brücke ein.', 'error');
-      openSettings();
-    } else toast('Die Bildschirmübertragung ist auf dieser Brücke ausgeschaltet.', 'error');
-    return;
-  }
-  if (!SH.session || SH.session.state !== 'open') {
-    toast('Verbindung zur Bildschirmübertragung wird noch aufgebaut – bitte gleich noch einmal versuchen.', 'error');
-    return;
-  }
-  const room = shareRoom();
-  const me = S.clients.get(S.ownId);
-  if (!FunkShare.support().send) {
-    if (S.config.desktop && room) {
-      const ok = await confirmDialog('Diese Ansicht kann den Bildschirm nicht aufnehmen. Funkraum öffnet dafür deinen Browser – dort wählst du den Bildschirm, alle in deinem Kanal sehen ihn wie gewohnt.', { title: 'Bildschirm teilen', okLabel: 'Im Browser teilen', icon: 'question' });
-      if (ok) FunkShare.openExternal(FunkShare.link(srv, room, { send: 1, n: me ? me.name : '', c: me ? me.id : '', u: (me && me.uid) || '' }));
-    } else {
-      toast('Dein Browser kann den Bildschirm nicht teilen (auf Handys und Tablets geht das nicht). Zuschauen geht trotzdem.', 'error');
-    }
-    return;
-  }
-  const form = FunkShare.optionsForm(store.get('sharePrefs', {}), { tabs: !S.config.desktop });
-  const go = await new Promise((resolve) => {
-    modalResolve = resolve;
-    const ok = el('button', { class: 'primary', onclick: () => { modalResolve = null; closeModal(); resolve(true); } }, 'Bildschirm wählen…');
-    openModal('Bildschirm teilen', el('div', {},
-      el('p', { class: 'muted small' }, 'Alle in deinem Kanal können zuschauen – auch wer über eine andere Funkraum-Brücke oder die Desktop-App verbunden ist. Das Bild läuft über die Brücke, nicht über den TeamSpeak-Server.'),
-      form.node), [el('button', { onclick: () => closeModal(false) }, 'Abbrechen'), ok], { wide: true });
-  });
-  if (!go || !SH.session) return;
-  const opts = form.values();
-  const wantsAudio = form.wantsAudio();
-  store.set('sharePrefs', Object.assign({}, opts, { audio: wantsAudio }));
-  try {
-    const info = await SH.session.startSharing(opts);
-    if (wantsAudio && !info.hasAudio) {
-      if (!FunkShare.support().audio) shareAddAudio();
-      else toast('Ohne Ton: Im Auswahlfenster war „Ton teilen“ nicht angehakt. Über „Ton hinzufügen…“ oben kannst du ihn jederzeit nachholen.');
-    }
-  } catch (e) {
-    const msg = e && e.message ? e.message : String(e);
-    if (/abgebrochen/.test(msg)) return;
-    if (S.config.desktop && room) {
-      const ok = await confirmDialog(`${msg} Du kannst den Bildschirm stattdessen im Browser teilen.`, { title: 'Bildschirm teilen', okLabel: 'Im Browser teilen', icon: 'warn' });
-      if (ok) FunkShare.openExternal(FunkShare.link(srv, room, { send: 1, n: me ? me.name : '', c: me ? me.id : '', u: (me && me.uid) || '' }));
-    } else toast(msg, 'error');
-  }
 }
 
 /** Record 5 seconds of what the others would hear and play it back. */
@@ -3227,8 +2959,6 @@ function setupStaticUI() {
   $('#btn-settings').innerHTML = ICON.settings;
   $('#btn-help').innerHTML = ICON.help;
   $('#btn-mini').innerHTML = ICON.mini;
-  $('#btn-share').addEventListener('click', shareDialog);
-  updateShareButton();
   $('#btn-mini').addEventListener('click', () => (S.mini ? closeMini() : openMini()));
   $('#login-settings').innerHTML = ICON.settings;
   $('#login-settings').addEventListener('click', openSettings);

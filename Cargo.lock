@@ -1002,7 +1002,6 @@ dependencies = [
  "tracing-subscriber",
  "tsclientlib",
  "tsproto-packets",
- "webkit2gtk",
  "winreg",
  "winresource",
  "wry",

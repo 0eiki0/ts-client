@@ -36,10 +36,6 @@ lto = "thin"
 strip = true
 codegen-units = 1
 
-[target.'cfg(target_os = "linux")'.dependencies]
-# same version as wry's: switches on media streams (microphone, screen sharing)
-webkit2gtk = { version = "2.0.2", features = ["v2_40"] }
-
 [target."cfg(windows)".dependencies]
 winreg = "0.56.0"
 
