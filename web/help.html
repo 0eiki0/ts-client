@@ -83,6 +83,7 @@
       <a href="#sync">Identitäten auf mehreren Geräten</a>
       <a href="#hinweise">Hinweise &amp; Sounds</a>
       <a href="#einstellungen">Einstellungen</a>
+      <a href="#bildschirm">Bildschirm teilen</a>
       <a href="#mini">Kleines Fenster</a>
       <a href="#tasten">Tastenkürzel</a>
       <a href="#handy">Handy &amp; App</a>
@@ -301,6 +302,32 @@
       </ul>
     </section>
 
+    <section class="card" id="bildschirm">
+      <h2>Bildschirm teilen</h2>
+      <p class="lead">Zeig den anderen in deinem Kanal deinen Bildschirm, ein Fenster oder einen Browser-Tab – auf Wunsch mit Ton. Das Bild läuft nicht über den TeamSpeak-Server, sondern über Funkraum Web; es klappt deshalb auf jedem Server.</p>
+      <ol class="steps">
+        <li>Klicke oben in der Leiste auf das Symbol <strong>Bildschirm teilen</strong> (Monitor).</li>
+        <li>Wähle Auflösung und Bildrate und ob der <strong>Ton</strong> mit soll. Dann auf <strong>Bildschirm wählen…</strong> klicken.</li>
+        <li>Der Browser fragt, was du teilen möchtest: ganzer Bildschirm, ein Fenster oder ein Tab. Für Ton dort <strong>„Ton teilen“</strong> bzw. „Systemaudio teilen“ anhaken.</li>
+        <li>Oben über dem Chat steht jetzt <strong>„Du teilst deinen Bildschirm“</strong> mit der Zahl der Zuschauer. Dort schaltest du den <strong>Ton an und aus</strong>, kopierst einen Link oder beendest die Übertragung.</li>
+      </ol>
+      <h3>Zuschauen</h3>
+      <ul>
+        <li>Teilt jemand in deinem Kanal, erscheint oben über dem Chat <strong>„… teilt den Bildschirm – Ansehen“</strong>, und im Kanalbaum steht neben dem Namen ein kleiner Monitor. Ein Klick darauf öffnet das Bild.</li>
+        <li>Doppelklick aufs Bild oder das Symbol mit den vier Ecken: <strong>Vollbild</strong>. Mit dem Lautsprecher-Symbol und dem Regler stellst du den Ton der Übertragung ein. Das ✕ schließt das Bild nur bei dir.</li>
+        <li>Teilen mehrere Leute gleichzeitig, kannst du mehrere Bildschirme nebeneinander ansehen. Die Fläche lässt sich an der unteren rechten Ecke größer und kleiner ziehen.</li>
+        <li>Wechselst du den Kanal, siehst du die Bildschirme im neuen Kanal. Wer selbst teilt und den Kanal wechselt, nimmt seine Übertragung mit.</li>
+        <li><strong>Ohne Funkraum zuschauen</strong>, z. B. mit dem TeamSpeak-Programm: Wer teilt, klickt auf <strong>„Link kopieren“</strong> und schickt den Link in den Chat. Der Link öffnet die Bildschirme des Kanals im Browser. Gib ihn nur Leuten, die zuschauen dürfen.</li>
+      </ul>
+      <h3>Was geht wo?</h3>
+      <ul>
+        <li><strong>Teilen</strong> geht in Chrome, Edge, Opera, Firefox und Safari auf dem Computer. Auf Handys und Tablets lassen die Browser das nicht zu – <strong>zuschauen</strong> geht dort aber.</li>
+        <li><strong>Ton mitschicken</strong> können nur Chrome, Edge und Opera (bei einem Tab dessen Ton, unter Windows auch den ganzen Systemton) sowie die Desktop-App unter Windows. Deine Stimme aus dem Sprachchat wird dabei nicht mit übertragen.</li>
+        <li><strong>In der Desktop-App</strong> trägst du einmal unter <em>Einstellungen → Bildschirm teilen</em> die Adresse einer Funkraum-Web-Brücke ein (z. B. <code>ts.example.com</code>). Wer im selben Kanal ist und dieselbe Brücke nutzt, sieht deinen Bildschirm – egal, auf welchem TeamSpeak-Server ihr seid. Kann die App den Bildschirm auf deinem System nicht selbst aufnehmen (manche macOS- und Linux-Versionen), öffnet sie dafür deinen Browser.</li>
+      </ul>
+      <div class="tip"><strong>Ruckelt es?</strong>Wähle beim Start eine kleinere Auflösung oder 15 Bilder/s. Für Text und Folien reichen 5 Bilder/s – das spart viel Datenvolumen.</div>
+    </section>
+
     <section class="card" id="mini">
       <h2>Kleines Fenster</h2>
       <p class="lead">Beim Spielen oder Arbeiten brauchst du nicht die ganze Seite: Das kleine Fenster zeigt nur das Wichtigste und bleibt neben deinen anderen Programmen sichtbar.</p>
@@ -415,6 +442,7 @@
         <li><strong>In deinem Browser</strong>: deine Identitäten, Einstellungen, eigene Sounds, Lautstärken pro Person und – wenn du „Eingaben merken“ aktiviert hast – Nickname und Kanal. Passwörter für Server und Kanäle werden <strong>nicht</strong> gespeichert.</li>
         <li><strong>Auf dem Server dieser Seite</strong>: nur deine verschlüsselte Sync-Sicherung, falls du den Sync eingerichtet hast. Niemand außer dir kann sie lesen.</li>
         <li><strong>Während du verbunden bist</strong>: Die Seite leitet Ton und Chat zwischen deinem Browser und dem Sprachserver weiter. Ton und Nachrichten werden dabei nicht gespeichert.</li>
+        <li><strong>Bildschirm teilen</strong>: Bild und Ton werden über Funkraum Web an die Zuschauer weitergeleitet und dabei nicht gespeichert.</li>
         <li>Der Sprachserver sieht deinen Nickname, deine eindeutige ID und die Adresse dieser Seite (nicht deine eigene).</li>
       </ul>
       <p>Alles im Browser löschst du über die Browser-Einstellungen („Websitedaten löschen“) – vorher Identitäten exportieren!</p>

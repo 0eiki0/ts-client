@@ -83,6 +83,7 @@
       <button class="tool" id="btn-away" title="Abwesend"></button>
       <button class="tool" id="btn-info" title="Serverinfo"></button>
       <button class="tool" id="btn-manage" title="Serververwaltung (Server, Gruppen, Rechte, Bans)"></button>
+      <button class="tool" id="btn-share" title="Bildschirm teilen" hidden></button>
       <button class="tool" id="btn-mini" title="Kleines Fenster (immer im Vordergrund)"></button>
       <button class="tool" id="btn-settings" title="Einstellungen"></button>
       <a class="tool" id="btn-help" href="help.html" title="Hilfe &amp; Anleitung" aria-label="Hilfe"></a>
@@ -107,6 +108,8 @@
     </aside>
 
     <section class="pane chat-pane" id="pane-chat">
+      <div class="screen-bar" id="screen-bar" hidden></div>
+      <div class="screens" id="screens" hidden></div>
       <div class="chat-tabs" id="chat-tabs"></div>
       <div class="chat-log" id="chat-log" aria-live="polite"></div>
       <form class="chat-input" id="chat-form">
@@ -233,6 +236,14 @@
     </label>
     <label class="check"><input type="checkbox" id="s-show-query"> ServerQuery-Clients (Bots) im Kanalbaum anzeigen</label>
 
+    <div id="s-share-row" hidden>
+      <h3>Bildschirm teilen</h3>
+      <label>Funkraum-Web-Brücke für Bildschirmübertragungen
+        <input id="s-share-server" autocomplete="off" spellcheck="false">
+      </label>
+      <p class="muted small">Das Bild läuft nicht über den TeamSpeak-Server, sondern über eine Funkraum-Web-Brücke – egal, auf welchem Server du bist. Wer im selben Kanal ist und dieselbe Brücke nutzt, sieht deinen Bildschirm. <span id="s-share-info"></span></p>
+    </div>
+
     <h3>Programm</h3>
     <p class="small">Funkraum <span id="s-app-version">–</span></p>
     <div class="row wrap"><button type="button" id="s-app-update">Nach Updates suchen</button></div>
@@ -247,6 +258,7 @@
   </div>
 </template>
 
+<script src="share.js"></script>
 <script src="app.js"></script>
 <script src="desktop.js"></script>
 <script src="manage.js"></script>

@@ -48,6 +48,11 @@ Dazu kommt:
   - **Windows:** Tastatur und Maustasten (auch die Seitentasten)
   - **macOS:** Tastatur und mittlere Maustaste. macOS fragt beim ersten Start nach der Erlaubnis für **Bedienungshilfen**: *Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen* → „Funkraum“ einschalten, dann die App neu starten.
   - **Linux:** Tastatur und mittlere Maustaste unter X11. Unter Wayland werden nur Tasten erkannt, die in X11-Programmen gedrückt werden.
+- **Bildschirm teilen**, unabhängig vom TeamSpeak-Server: Bildschirm oder Fenster mit allen im Kanal teilen (unter Windows auf Wunsch mit Ton) und anderen zuschauen. Das Bild läuft über eine [Funkraum-Web-Brücke](https://github.com/0eiki0/ts3-webbridge), nicht über den TeamSpeak-Server. Deshalb klappt es auf jedem Server, und Nutzer von Funkraum Web im selben Kanal sehen dich auch.
+  - Einmal unter *Einstellungen → Bildschirm teilen* die Adresse einer Brücke eintragen (z. B. `ts.example.com`). Alle im selben Kanal, die dieselbe Brücke nutzen, sehen sich gegenseitig.
+  - **Windows:** Teilen mit Ton, Zuschauen mit Ton.
+  - **Linux:** Teilen über das Auswahlfenster des Desktops (xdg-desktop-portal, z. B. unter GNOME und KDE), ohne Ton. Zuschauen mit Ton.
+  - **macOS:** Zuschauen. Kann die Ansicht des Systems den Bildschirm nicht aufnehmen, öffnet Funkraum zum Teilen deinen Browser. Dort geht es wie gewohnt.
 - **Benachrichtigungen** bei Anstupsern und privaten Nachrichten als normale Systembenachrichtigung (Windows: Absender „Funkraum“), einschalten unter *Einstellungen → Desktop-Benachrichtigungen*.
 - **Serveradressen mit SRV-Eintrag** (`_ts3._udp.example.com`) werden wie im TeamSpeak-Programm aufgelöst. Antwortet das DNS des Systems nicht, fragt die App zusätzlich Cloudflare und Google.
 - Identitäten und Einstellungen bleiben auf dem Rechner gespeichert:
@@ -74,6 +79,8 @@ cargo build --release
 ./target/release/funkraum          # -v für ausführliche Protokolle
 ```
 
+Mit `FUNKRAUM_SHARE_SERVER=ts.example.com cargo build --release` ist diese Brücke für Bildschirmübertragungen voreingestellt; Nutzer können sie in den Einstellungen ändern. In GitHub Actions kommt der Wert aus der Repository-Variable `FUNKRAUM_SHARE_SERVER` (*Settings → Secrets and variables → Actions → Variables*).
+
 GitHub Actions baut bei jedem Push auf `main` alle drei Systeme und veröffentlicht sie als Release **„latest“**. Ein Tag wie `v1.0.0` erzeugt ein Release mit Versionsnummer.
 
 ## Aufbau
@@ -87,7 +94,7 @@ GitHub Actions baut bei jedem Push auf `main` alle drei Systeme und veröffentli
 | `src/web.rs` | Lokaler Server: Oberfläche, Identitäten, WebSocket; Schutz gegen fremde Zugriffe |
 | `src/session.rs`, `src/protocol.rs`, `src/capture.rs`, `src/resolve.rs`, `src/versions.rs` | Aus Funkraum Web: TeamSpeak-Verbindung, Audio, Befehle |
 | `src/admin.rs`, `src/query.rs`, `src/bans.rs` | Platzhalter für Teile der Brücke, die es nur auf dem Server gibt |
-| `web/` | Oberfläche (aus Funkraum Web) |
+| `web/` | Oberfläche (aus Funkraum Web), `web/share.js` = Bildschirm teilen |
 | `packaging/Info.plist` | macOS-App (Mikrofon-Hinweis) |
 
 ## Lizenz

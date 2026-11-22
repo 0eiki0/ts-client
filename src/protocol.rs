@@ -199,6 +199,8 @@ pub struct ClientDto {
 
 #[derive(Debug, Serialize)]
 pub struct ServerDto {
+	/// Unique id of the virtual server (from its public key).
+	pub uid: String,
 	pub name: String,
 	pub welcome_message: String,
 	pub host_message: String,

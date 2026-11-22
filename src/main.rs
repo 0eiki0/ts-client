@@ -166,7 +166,8 @@ fn main() -> Result<()> {
 			}
 		})
 		.with_permission_handler(|kind| match kind {
-			PermissionKind::Microphone => PermissionResponse::Allow,
+			// Screen sharing: the system still shows its own picker (window or screen).
+			PermissionKind::Microphone | PermissionKind::DisplayCapture => PermissionResponse::Allow,
 			_ => PermissionResponse::Default,
 		});
 
@@ -177,7 +178,18 @@ fn main() -> Result<()> {
 		use tao::platform::unix::WindowExtUnix;
 		use wry::WebViewBuilderExtUnix;
 		let vbox = window.default_vbox().context("GTK-Container")?;
-		builder.build_gtk(vbox).context("Web-Ansicht")?
+		let webview = builder.build_gtk(vbox).context("Web-Ansicht")?;
+		// WebKitGTK only offers microphone and screen capture (getUserMedia,
+		// getDisplayMedia via the desktop portal) with media streams switched on.
+		{
+			use webkit2gtk::{SettingsExt, WebViewExt};
+			use wry::WebViewExtUnix;
+			if let Some(settings) = WebViewExt::settings(&webview.webview()) {
+				settings.set_enable_media_stream(true);
+				settings.set_enable_webrtc(true);
+			}
+		}
+		webview
 	};
 
 	// Global push-to-talk
@@ -286,6 +298,15 @@ fn main() -> Result<()> {
 						}
 					}
 					"open-releases" => updater::open_releases(),
+					// Links from the page (screen sharing in the browser): only web addresses.
+					"open-url" => {
+						if let Some(url) = serde_json::from_str::<serde_json::Value>(&msg)
+							.ok()
+							.and_then(|v| v.get("url").and_then(|u| u.as_str()).map(str::to_string))
+						{
+							updater::open_url(&url);
+						}
+					}
 					"restart" => {
 						if let Err(error) = updater::restart() {
 							tracing::warn!(%error, "Neustart fehlgeschlagen");

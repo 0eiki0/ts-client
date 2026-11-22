@@ -1452,6 +1452,7 @@ fn server_variables(state: &State) -> AdminData {
 fn build_state(state: &State, ping_ms: Option<f64>, packet_loss: Option<f32>) -> ServerMsg {
 	let s = &state.server;
 	let server = ServerDto {
+		uid: s.public_key.get_uid(),
 		name: s.name.clone(),
 		welcome_message: s.welcome_message.clone(),
 		host_message: s.hostmessage.clone(),
