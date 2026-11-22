@@ -67,11 +67,17 @@
   /** What this browser / web view can do. */
   function support() {
     const md = navigator.mediaDevices;
+    const chromium = !!window.MediaStreamTrackProcessor;
     return {
       send: !!(window.isSecureContext && md && md.getDisplayMedia && window.VideoEncoder && window.VideoFrame),
       view: !!(window.VideoDecoder && window.EncodedVideoChunk),
       // Sound of the shared tab/screen: only Chromium (Chrome, Edge, Opera, desktop app on Windows) delivers it.
-      audio: !!(window.MediaStreamTrackProcessor && window.AudioEncoder),
+      audio: !!(chromium && window.AudioEncoder),
+      // Sound from an audio device (stereo mix, VB-Cable, second microphone …): every browser with WebCodecs.
+      deviceAudio: !!(window.isSecureContext && md && md.getUserMedia && window.AudioEncoder && window.AudioData
+        && (chromium || window.AudioWorkletNode)),
+      // Only Chromium can share single browser tabs.
+      tabs: chromium,
       audioView: !!(window.AudioDecoder && (window.AudioContext || window.webkitAudioContext)),
     };
   }
@@ -353,6 +359,14 @@
       this.emit('sending', null);
     }
 
+    /** Add sound to a running share: {kind:'display'} (browser asks again) or {kind:'device', deviceId}. */
+    async addAudio(source) {
+      if (!this.sender) throw new Error('Du teilst gerade nichts.');
+      await this.sender.addAudio(source);
+      this.emit('sending', this.sender.info());
+      return this.sender.info();
+    }
+
     /** Switch the sound of the own stream; false if no sound was captured. */
     setAudio(on) {
       if (!this.sender) return false;
@@ -400,6 +414,7 @@
       this.quality = QUALITIES[opts.quality] ? String(opts.quality) : '1080';
       this.fps = FPS.includes(Number(opts.fps)) ? Number(opts.fps) : 30;
       this.audioWanted = opts.audio !== false;
+      this.surface = ['monitor', 'window', 'browser'].includes(opts.surface) ? opts.surface : '';
       this.running = false;
       this.viewers = 0;
       this.enc = null;
@@ -418,6 +433,8 @@
       if (!sup.send) throw new Error('Bildschirm teilen wird hier nicht unterstützt.');
       const q = QUALITIES[this.quality];
       const video = { frameRate: { ideal: this.fps, max: this.fps }, width: { max: q.w }, height: { max: q.h } };
+      // Chromium opens its picker on this page (screen, window or tab).
+      if (this.surface) video.displaySurface = this.surface;
       // Sound is asked for whenever this browser can send it, so it can be
       // switched on later without choosing the screen again.
       const audio = sup.audio
@@ -446,7 +463,44 @@
       this.running = true;
       if (this.s.id != null) this.announce();
       this.startVideo();
-      if (this.atrack && sup.audio) this.startAudio();
+      if (this.atrack) await this.startAudio(this.atrack);
+    }
+
+    /** Sound for a running share, without choosing the screen again. */
+    async addAudio(source) {
+      const sup = support();
+      let track;
+      if (source && source.kind === 'device') {
+        if (!sup.deviceAudio) throw new Error('Dieser Browser kann keinen Ton von einem Audiogerät übertragen.');
+        let st;
+        try {
+          st = await navigator.mediaDevices.getUserMedia({ audio: {
+            deviceId: source.deviceId ? { exact: source.deviceId } : undefined,
+            echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 },
+          } });
+        } catch (e) { throw new Error(errorText(e)); }
+        track = st.getAudioTracks()[0];
+      } else {
+        if (!sup.audio) throw new Error('Diesen Ton kann nur Chrome, Edge oder Opera (und die Desktop-App unter Windows) übertragen. Wähle stattdessen ein Audiogerät.');
+        let st;
+        try {
+          st = await navigator.mediaDevices.getDisplayMedia({
+            video: { displaySurface: 'monitor', width: { max: 320 }, height: { max: 240 }, frameRate: { max: 1 } },
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false, restrictOwnAudio: true },
+            systemAudio: 'include', selfBrowserSurface: 'exclude',
+          });
+        } catch (e) { throw new Error(errorText(e)); }
+        // Only the sound is needed: the picture stays the one already shared.
+        for (const t of st.getVideoTracks()) t.stop();
+        track = st.getAudioTracks()[0];
+        if (!track) throw new Error('Es kam kein Ton. Hake im Auswahlfenster „Systemaudio teilen“ (ganzer Bildschirm) bzw. „Tab-Audio teilen“ (Tab) an. Einzelne Fenster haben in Chrome keinen Ton.');
+      }
+      if (!track) throw new Error('Kein Ton erhalten.');
+      if (!this.running) { track.stop(); return; }
+      await this.startAudio(track);
+      this.audioOn = true;
+      this.s.sendJson({ t: 'audio', on: true });
+      this.sendConfig();
     }
 
     async pickCodec(w, h) {
@@ -598,24 +652,89 @@
       if (!this.s.sendMedia(chunk.type === 'key' ? KIND_KEY : KIND_DELTA, chunk.timestamp, chunk) && chunk.type === 'key') this.forceKey = true;
     }
 
-    startAudio() {
-      let reader;
-      try { reader = new MediaStreamTrackProcessor({ track: this.atrack }).readable.getReader(); } catch { return; }
-      this.areader = reader;
-      (async () => {
-        for (;;) {
-          let r;
-          try { r = await reader.read(); } catch { break; }
-          if (r.done) break;
-          const d = r.value;
-          if (this.running && this.audioOn && this.s.buffered() < MAX_BUFFERED) this.encodeAudio(d);
-          d.close();
+    /** Encode the sound of `track` (replaces an earlier sound source). */
+    async startAudio(track) {
+      this.stopAudio();
+      this.atrack = track;
+      this.aencFailed = false;
+      track.addEventListener('ended', () => {
+        if (this.atrack !== track) return;
+        this.stopAudio();
+        this.audioOn = false;
+        this.s.sendJson({ t: 'audio', on: false });
+        if (this.s.sender === this) this.s.emit('sending', this.info());
+      });
+      const feed = (d) => {
+        if (this.running && this.audioOn && this.atrack === track && this.s.buffered() < MAX_BUFFERED) this.encodeAudio(d);
+        d.close();
+      };
+      if (window.MediaStreamTrackProcessor) {
+        let reader;
+        try { reader = new MediaStreamTrackProcessor({ track }).readable.getReader(); } catch { reader = null; }
+        if (reader) {
+          this.areader = reader;
+          (async () => {
+            for (;;) {
+              let r;
+              try { r = await reader.read(); } catch { break; }
+              if (r.done) break;
+              feed(r.value);
+            }
+          })();
+          return;
         }
-      })();
+      }
+      // Firefox, Safari: an AudioWorklet hands over 20 ms blocks.
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx || !window.AudioWorkletNode || !window.AudioData) throw new Error('Dieser Browser kann keinen Ton übertragen.');
+      // 48 kHz suits Opus best; Firefox only connects a device at its own rate, then the default.
+      let ctx, src;
+      for (const opts of [{ sampleRate: 48000 }, {}]) {
+        try {
+          ctx = new Ctx(opts);
+          src = ctx.createMediaStreamSource(new MediaStream([track]));
+          break;
+        } catch {
+          if (ctx) { try { ctx.close(); } catch { /* ignore */ } }
+          ctx = null;
+        }
+      }
+      if (!ctx) throw new Error('Der Ton kann in diesem Browser nicht aufgenommen werden.');
+      this.actx = ctx;
+      await ctx.audioWorklet.addModule('share-audio.js');
+      if (this.actx !== ctx) return;
+      const node = new AudioWorkletNode(ctx, 'share-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      const mute = ctx.createGain();
+      mute.gain.value = 0;
+      src.connect(node).connect(mute).connect(ctx.destination);
+      let ts = 0;
+      node.port.onmessage = (e) => {
+        const { ch, frames, data } = e.data;
+        let d;
+        try { d = new AudioData({ format: 'f32-planar', sampleRate: ctx.sampleRate, numberOfFrames: frames, numberOfChannels: ch, timestamp: ts, data }); } catch { return; }
+        ts += Math.round(frames / ctx.sampleRate * 1e6);
+        feed(d);
+      };
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    }
+
+    stopAudio() {
+      try { this.areader && this.areader.cancel(); } catch { /* ignore */ }
+      this.areader = null;
+      if (this.actx) { try { this.actx.close(); } catch { /* ignore */ } }
+      this.actx = null;
+      if (this.aenc) { try { this.aenc.close(); } catch { /* ignore */ } }
+      this.aenc = null;
+      if (this.atrack && !(this.stream && this.stream.getAudioTracks().includes(this.atrack))) this.atrack.stop();
     }
 
     encodeAudio(d) {
       if (this.aencFailed) return;
+      // another source with another format: new encoder
+      if (this.aenc && this.aencFmt && (this.aencFmt.sampleRate !== d.sampleRate || this.aencFmt.ch !== Math.min(2, d.numberOfChannels))) {
+        try { this.aenc.close(); } catch { /* ignore */ }
+        this.aenc = null;
+      }
       if (!this.aenc) {
         const cfg = { codec: 'opus', sampleRate: d.sampleRate, numberOfChannels: Math.min(2, d.numberOfChannels), bitrate: 128000 };
         const enc = new AudioEncoder({
@@ -632,6 +751,7 @@
         });
         try { enc.configure(cfg); } catch (e) { console.warn('AudioEncoder', e); this.aencFailed = true; return; }
         this.aenc = enc;
+        this.aencFmt = { sampleRate: d.sampleRate, ch: cfg.numberOfChannels };
         this.cfgAudio = { codec: 'opus', sampleRate: cfg.sampleRate, numberOfChannels: cfg.numberOfChannels };
         this.sendConfig();
       }
@@ -640,7 +760,7 @@
     }
 
     setAudio(on) {
-      if (on && !this.atrack) return false;
+      if (on && (!this.atrack || this.atrack.readyState === 'ended')) return false;
       this.audioOn = !!on;
       this.s.sendJson({ t: 'audio', on: this.audioOn });
       return true;
@@ -655,7 +775,7 @@
 
     info() {
       return {
-        viewers: this.viewers, audio: !!this.audioOn, hasAudio: !!this.atrack, width: this.w, height: this.h,
+        viewers: this.viewers, audio: !!this.audioOn, hasAudio: !!(this.atrack && this.atrack.readyState !== 'ended'), width: this.w, height: this.h,
         codec: this.codec, fps: this.fps, quality: this.quality, label: this.vtrack ? this.vtrack.label : '',
       };
     }
@@ -663,14 +783,13 @@
     stop() {
       this.running = false;
       try { this.reader && this.reader.cancel(); } catch { /* ignore */ }
-      try { this.areader && this.areader.cancel(); } catch { /* ignore */ }
+      this.stopAudio();
       if (this.tick) this.tick.terminate();
       clearInterval(this.tickTimer);
       if (this.video) { this.video.srcObject = null; this.video = null; }
       if (this.stream) for (const t of this.stream.getTracks()) t.stop();
-      for (const e of [this.enc, this.aenc]) { if (e) { try { e.close(); } catch { /* ignore */ } } }
+      if (this.enc) { try { this.enc.close(); } catch { /* ignore */ } }
       this.enc = null;
-      this.aenc = null;
     }
   }
   const even = (n) => Math.max(2, Math.floor(n / 2) * 2);
@@ -881,25 +1000,124 @@
   }
 
   // ------------------------------------------------------------------ dialog helpers
-  /** Form fields for starting a share (used by app.js and screen.js). */
-  function optionsForm(prefs = {}) {
-    const sup = support();
-    const quality = el('select', { id: 'share-quality' }, Object.entries(QUALITIES).map(([k, q]) => el('option', { value: k }, q.label)));
-    quality.value = QUALITIES[prefs.quality] ? String(prefs.quality) : '1080';
-    const fps = el('select', { id: 'share-fps' }, FPS.map((f) => el('option', { value: f }, f === 5 ? '5 Bilder/s (Text, Folien – spart Daten)' : f === 15 ? '15 Bilder/s' : f === 30 ? '30 Bilder/s (empfohlen)' : '60 Bilder/s (Spiele, Videos)')));
-    fps.value = FPS.includes(Number(prefs.fps)) ? String(prefs.fps) : '30';
-    const audio = el('input', { type: 'checkbox', id: 'share-audio' });
-    audio.checked = prefs.audio !== false && sup.audio;
-    audio.disabled = !sup.audio;
-    const node = el('div', { class: 'share-form' },
-      el('label', {}, 'Auflösung', quality),
-      el('label', {}, 'Bildrate', fps),
-      el('label', { class: 'check' }, audio, el('span', {}, 'Ton übertragen ',
-        el('span', { class: 'muted small' }, sup.audio
-          ? '(Ton des Tabs oder des ganzen Systems – im Auswahlfenster „Ton teilen“ anhaken; lässt sich während der Übertragung ein- und ausschalten)'
-          : '(geht nur in Chrome, Edge oder Opera und in der Desktop-App unter Windows)'))));
-    return { node, values: () => ({ quality: quality.value, fps: Number(fps.value), audio: audio.checked }) };
+  const PICK_ICON = {
+    monitor: svg('<rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 16.5v4"/>'),
+    window: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M6.5 6.5h.01M9 6.5h.01"/>'),
+    browser: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 9V6.5A2.5 2.5 0 0 1 5.5 4H10l1.5 5"/>'),
+    text: svg('<path d="M5 6h14M5 10h14M5 14h9M5 18h6"/>'),
+    standard: svg('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l4 2-4 2z"/>'),
+    smooth: svg('<path d="M4 16c3-8 5-8 8 0s5 8 8 0"/>'),
+    sound: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>'),
+    device: svg('<rect x="7" y="3" width="10" height="18" rx="2"/><circle cx="12" cy="14" r="3"/><path d="M12 7h.01"/>'),
+  };
+  const PRESETS = {
+    text: { label: 'Text & Folien', hint: 'Gestochen scharf, 5 Bilder/s, wenig Daten', quality: '1440', fps: 5 },
+    standard: { label: 'Standard', hint: '1080p, 30 Bilder/s', quality: '1080', fps: 30 },
+    smooth: { label: 'Flüssig', hint: 'Spiele & Videos, 60 Bilder/s', quality: '1080', fps: 60 },
+  };
+
+  /** A row of big radio cards. items: [value, icon, title, hint]. */
+  function choices(name, items, value, onChange) {
+    const box = el('div', { class: 'share-choices', role: 'radiogroup' });
+    const sync = () => { for (const l of box.children) l.classList.toggle('checked', l.querySelector('input').checked); };
+    for (const [v, icon, title, hint] of items) {
+      const input = el('input', { type: 'radio', name, value: v });
+      input.checked = v === value;
+      input.addEventListener('change', () => { sync(); if (onChange) onChange(v); });
+      box.append(el('label', { class: 'share-choice' }, input,
+        el('span', { class: 'share-choice-ico', html: icon }),
+        el('strong', {}, title),
+        hint ? el('span', { class: 'share-choice-hint' }, hint) : null));
+    }
+    sync();
+    return { node: box, value: () => (box.querySelector('input:checked') || {}).value };
   }
 
-  window.FunkShare = { Session, support, server, here, link, openExternal, optionsForm, ICON, QUALITIES };
+  /** Start dialog: what to share, quality, sound (used by app.js and screen.js). */
+  function optionsForm(prefs = {}, { tabs = true } = {}) {
+    const sup = support();
+    const surfaces = [
+      ['monitor', PICK_ICON.monitor, 'Ganzer Bildschirm', 'Alles, was du siehst'],
+      ['window', PICK_ICON.window, 'Fenster', 'Ein Programm'],
+    ];
+    if (tabs && sup.tabs) surfaces.push(['browser', PICK_ICON.browser, 'Browser-Tab', 'Mit Ton des Tabs']);
+    const surface = choices('share-surface', surfaces, surfaces.some((x) => x[0] === prefs.surface) ? prefs.surface : 'monitor');
+
+    const quality = el('select', { id: 'share-quality' }, Object.entries(QUALITIES).map(([k, q]) => el('option', { value: k }, q.label)));
+    const fps = el('select', { id: 'share-fps' }, FPS.map((f) => el('option', { value: f }, `${f} Bilder/s`)));
+    const presetOf = (q, f) => Object.keys(PRESETS).find((k) => PRESETS[k].quality === q && PRESETS[k].fps === f) || '';
+    const q0 = QUALITIES[prefs.quality] ? String(prefs.quality) : '1080';
+    const f0 = FPS.includes(Number(prefs.fps)) ? Number(prefs.fps) : 30;
+    quality.value = q0;
+    fps.value = String(f0);
+    const preset = choices('share-preset', Object.entries(PRESETS).map(([k, p]) => [k, PICK_ICON[k], p.label, p.hint]), presetOf(q0, f0), (k) => {
+      quality.value = PRESETS[k].quality;
+      fps.value = String(PRESETS[k].fps);
+    });
+    const fine = () => {
+      const k = presetOf(quality.value, Number(fps.value));
+      for (const input of preset.node.querySelectorAll('input')) input.checked = input.value === k;
+      for (const l of preset.node.children) l.classList.toggle('checked', l.querySelector('input').checked);
+    };
+    quality.addEventListener('change', fine);
+    fps.addEventListener('change', fine);
+
+    const audio = el('input', { type: 'checkbox', id: 'share-audio', class: 'switch' });
+    audio.checked = prefs.audio !== false && (sup.audio || sup.deviceAudio);
+    audio.disabled = !sup.audio && !sup.deviceAudio;
+    const audioHint = sup.audio
+      ? 'Wähle im nächsten Fenster „Systemaudio teilen“ bzw. „Tab-Audio teilen“. Du kannst den Ton auch später jederzeit einschalten.'
+      : sup.deviceAudio
+        ? 'Dieser Browser schickt den Ton des Bildschirms nicht mit. Du kannst während der Übertragung ein Audiogerät (z. B. Stereomix) als Ton wählen.'
+        : 'In diesem Browser nicht möglich.';
+
+    const node = el('div', { class: 'share-form' },
+      el('div', { class: 'share-section' }, el('div', { class: 'share-label' }, 'Was möchtest du teilen?'), surface.node),
+      el('div', { class: 'share-section' }, el('div', { class: 'share-label' }, 'Qualität'), preset.node,
+        el('details', { class: 'share-fine' }, el('summary', {}, 'Feineinstellung'),
+          el('div', { class: 'share-fine-row' }, el('label', {}, 'Auflösung', quality), el('label', {}, 'Bildrate', fps)))),
+      el('label', { class: 'share-toggle' + (audio.disabled ? ' disabled' : '') },
+        el('span', { class: 'share-choice-ico', html: PICK_ICON.sound }),
+        el('span', { class: 'share-toggle-text' }, el('strong', {}, 'Ton übertragen'), el('span', { class: 'share-choice-hint' }, audioHint)),
+        audio),
+      el('p', { class: 'share-note' }, 'Danach öffnet der Browser sein eigenes Auswahlfenster. Fehlt dort ein Fenster? Minimierte Fenster und Fenster auf anderen virtuellen Desktops zeigt er meist nicht – Fenster vorher wiederherstellen oder „Ganzer Bildschirm“ wählen.'));
+    return {
+      node,
+      values: () => ({ surface: surface.value(), quality: quality.value, fps: Number(fps.value), audio: audio.checked && sup.audio }),
+      wantsAudio: () => audio.checked,
+    };
+  }
+
+  /** "Ton hinzufügen" during a share: sound of the system/tab or an audio device. */
+  function audioForm() {
+    const sup = support();
+    const items = [];
+    if (sup.audio) items.push(['display', PICK_ICON.sound, 'System- oder Tab-Ton', 'Der Browser fragt noch einmal – dein Bild bleibt, wie es ist']);
+    if (sup.deviceAudio) items.push(['device', PICK_ICON.device, 'Audiogerät', 'z. B. Stereomix, VB-Cable oder ein Mikrofon']);
+    if (!items.length) {
+      return { node: el('p', {}, 'Dieser Browser kann keinen Ton übertragen. Nimm Chrome, Edge oder Opera.'), values: () => null };
+    }
+    const devSel = el('select', { id: 'share-audio-device' }, el('option', { value: '' }, 'Standard-Eingabegerät'));
+    const devRow = el('label', { class: 'share-device' }, 'Gerät', devSel);
+    const pick = choices('share-audio-src', items, items[0][0], (v) => { devRow.hidden = v !== 'device'; });
+    devRow.hidden = pick.value() !== 'device';
+    if (sup.deviceAudio && navigator.mediaDevices.enumerateDevices) {
+      navigator.mediaDevices.enumerateDevices().then((devs) => {
+        const ins = devs.filter((d) => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+        const named = ins.map((d, i) => ({ id: d.deviceId, label: d.label || `Eingang ${i + 1}` }));
+        // stereo mix / virtual cables first: what people usually want here
+        named.sort((a, b) => (/stereo|mix|cable|loopback|monitor|blackhole/i.test(b.label) ? 1 : 0) - (/stereo|mix|cable|loopback|monitor|blackhole/i.test(a.label) ? 1 : 0));
+        for (const d of named) devSel.append(el('option', { value: d.id }, d.label));
+        const best = named.find((d) => /stereo|mix|cable|loopback|monitor|blackhole/i.test(d.label));
+        if (best) devSel.value = best.id;
+      }).catch(() => {});
+    }
+    const node = el('div', { class: 'share-form' },
+      el('p', { class: 'muted small' }, 'Deine Übertragung läuft dabei weiter. Deine Stimme aus dem Sprachchat wird nicht mitgeschickt.'),
+      pick.node, devRow,
+      sup.audio ? el('p', { class: 'share-note' }, 'System-Ton: Wähle im Auswahlfenster „Ganzer Bildschirm“ und hake „Systemaudio teilen“ an – oder einen Tab mit „Tab-Audio teilen“. Einzelne Fenster haben dort keinen Ton.') : null);
+    return { node, values: () => (pick.value() === 'device' ? { kind: 'device', deviceId: devSel.value } : { kind: 'display' }) };
+  }
+
+  window.FunkShare = { Session, support, server, here, link, openExternal, optionsForm, audioForm, ICON, QUALITIES };
 })();

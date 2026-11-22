@@ -3007,9 +3007,10 @@ function renderShare() {
     const chip = el('div', { class: 'screen-chip own' },
       el('span', { class: 'ico', html: FunkShare.ICON.screen }),
       el('span', {}, el('strong', {}, 'Du teilst deinen Bildschirm'), ' · ', parts.join(' · ')));
-    const audioBtn = el('button', { type: 'button', class: 'small' + (s.audio ? ' on' : ''), title: s.hasAudio ? '' : 'Beim Start wurde kein Ton freigegeben' }, s.audio ? 'Ton an' : 'Ton aus');
+    const audioBtn = el('button', { type: 'button', class: 'small' + (s.audio ? ' on' : ''), title: s.audio ? 'Ton ausschalten' : s.hasAudio ? 'Ton einschalten' : 'Ton hinzufügen, ohne die Übertragung neu zu starten' }, s.audio ? 'Ton an' : s.hasAudio ? 'Ton aus' : 'Ton hinzufügen…');
     audioBtn.addEventListener('click', () => {
-      if (!ses.setAudio(!s.audio)) toast('Es wurde kein Ton freigegeben. Beende die Übertragung und hake beim nächsten Mal im Auswahlfenster „Ton teilen“ an (nur Chrome, Edge, Opera und die Desktop-App unter Windows).', 'error');
+      if (s.audio) ses.setAudio(false);
+      else if (!ses.setAudio(true)) shareAddAudio();
     });
     const linkBtn = el('button', { type: 'button', class: 'small', title: 'Link für Leute ohne Funkraum, z. B. mit dem TeamSpeak-Programm: Sie schauen im Browser zu' }, 'Link kopieren');
     linkBtn.addEventListener('click', () => shareCopyLink());
@@ -3065,6 +3066,26 @@ function shareCopyLink() {
   else promptDialog('Link zum Zuschauen', url, { label: 'Link kopieren:' });
 }
 
+/** Add sound to the running share (system/tab sound or an audio device), without restarting it. */
+async function shareAddAudio() {
+  if (!SH.session || !SH.sending) return;
+  const form = FunkShare.audioForm();
+  const go = await new Promise((resolve) => {
+    modalResolve = resolve;
+    const ok = el('button', { class: 'primary', onclick: () => { modalResolve = null; closeModal(); resolve(true); } }, 'Ton hinzufügen');
+    openModal('Ton hinzufügen', form.node, [el('button', { onclick: () => closeModal(false) }, 'Abbrechen'), ok]);
+  });
+  const src = go && form.values();
+  if (!src || !SH.session || !SH.sending) return;
+  try {
+    await SH.session.addAudio(src);
+    toast('Der Ton wird jetzt mit übertragen.');
+  } catch (e) {
+    const msg = e && e.message ? e.message : String(e);
+    if (!/abgebrochen/.test(msg)) toast(msg, 'error');
+  }
+}
+
 async function shareDialog() {
   if (SH.sending && SH.session) { SH.session.stopSharing(); return; }
   if (!window.FunkShare) return;
@@ -3091,20 +3112,24 @@ async function shareDialog() {
     }
     return;
   }
-  const form = FunkShare.optionsForm(store.get('sharePrefs', {}));
+  const form = FunkShare.optionsForm(store.get('sharePrefs', {}), { tabs: !S.config.desktop });
   const go = await new Promise((resolve) => {
     modalResolve = resolve;
     const ok = el('button', { class: 'primary', onclick: () => { modalResolve = null; closeModal(); resolve(true); } }, 'Bildschirm wählen…');
     openModal('Bildschirm teilen', el('div', {},
-      el('p', { class: 'muted small' }, 'Alle in deinem Kanal können zuschauen – auch wer über eine andere Funkraum-Brücke oder die Desktop-App verbunden ist. Das Bild läuft über die Brücke, nicht über den TeamSpeak-Server. Danach fragt der Browser, welchen Bildschirm, welches Fenster oder welchen Tab du teilen möchtest.'),
-      form.node), [el('button', { onclick: () => closeModal(false) }, 'Abbrechen'), ok]);
+      el('p', { class: 'muted small' }, 'Alle in deinem Kanal können zuschauen – auch wer über eine andere Funkraum-Brücke oder die Desktop-App verbunden ist. Das Bild läuft über die Brücke, nicht über den TeamSpeak-Server.'),
+      form.node), [el('button', { onclick: () => closeModal(false) }, 'Abbrechen'), ok], { wide: true });
   });
   if (!go || !SH.session) return;
   const opts = form.values();
-  store.set('sharePrefs', opts);
+  const wantsAudio = form.wantsAudio();
+  store.set('sharePrefs', Object.assign({}, opts, { audio: wantsAudio }));
   try {
     const info = await SH.session.startSharing(opts);
-    if (opts.audio && !info.hasAudio && FunkShare.support().audio) toast('Ohne Ton: Im Auswahlfenster war „Ton teilen“ nicht angehakt.');
+    if (wantsAudio && !info.hasAudio) {
+      if (!FunkShare.support().audio) shareAddAudio();
+      else toast('Ohne Ton: Im Auswahlfenster war „Ton teilen“ nicht angehakt. Über „Ton hinzufügen…“ oben kannst du ihn jederzeit nachholen.');
+    }
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
     if (/abgebrochen/.test(msg)) return;
